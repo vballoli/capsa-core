@@ -50,7 +50,7 @@ setup(
     packages=find_packages(include=['capsa', 'capsa.*']),
     setup_requires=setup_requirements,
     url='https://github.com/themis-ai/capsa',
-    download_url = 'https://github.com/themis-ai/capsa/archive/refs/tags/0.1.1.tar.gz',
-    version='0.1.1',
+    download_url = 'https://github.com/themis-ai/capsa/archive/refs/tags/0.1.2.tar.gz',
+    version='0.1.2',
     zip_safe=False,
 )
