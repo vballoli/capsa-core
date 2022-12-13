@@ -70,7 +70,7 @@ model = tf.keras.Sequential(...)
 # Wrap the model with capsa to make it risk-aware.
 #   Capsa takes care of all the architecture, loss,
 #   and deployment changes so you don't have to!
-model = MVEWrapper(model)
+model = capsa.MVEWrapper(model)
 
 # Compile and train the wrapped model the
 #   same as you would have done with the
