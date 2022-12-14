@@ -1,9 +1,9 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow.keras import layers
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import stats
 
 
 def get_user_model():
@@ -141,11 +141,10 @@ def gen_calibration_plot(model, ds, path=None):
         # returns the value at the n% percentile e.g., stats.norm.ppf(0.5, 0, 1) == 0.0
         # in other words, if have a normal distrib. with mean 0 and std 1,
         # 50% of data falls below and 50% falls above 0.0.
-        ppf_for_this_percentile = stats.norm.ppf(
-            percentile, mu, std
-        )  # (3029, 128, 160, 1)
+        # (3029, 128, 160, 1)
+        ppf_for_this_percentile = tfp.distributions.Normal(mu, std).quantile(percentile)
         vals.append(
-            (y_test <= ppf_for_this_percentile).mean()
+            (y_test <= ppf_for_this_percentile.numpy()).mean()
         )  # (3029, 128, 160, 1) -> scalar
 
     plt.plot(percentiles, vals)

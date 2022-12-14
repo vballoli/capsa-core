@@ -96,7 +96,7 @@ class DropoutWrapper(BaseWrapper):
         metric_loss = 0
         return metric_loss, y_hat
 
-    def call(self, x, training=False, return_risk=True, T=20):
+    def call(self, x, training=False, return_risk=True, features=None, T=20):
         """
         Forward pass of the model
 
@@ -108,6 +108,9 @@ class DropoutWrapper(BaseWrapper):
             Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction.
+        features : tf.Tensor, default None
+            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
+            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
         T : int, default 20
             Number of forward passes with different dropout masks.
 
