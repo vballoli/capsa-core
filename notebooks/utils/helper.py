@@ -10,8 +10,8 @@ import glob
 #from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from sklearn import datasets
-import scipy.stats as ss
 import itertools
+import tensorflow_probability as tfp
 
 
 
@@ -51,12 +51,12 @@ def generate_moon_data_classification(noise=True):
 
     # mask = np.random.choice(2, y.shape, p=[0.5, 0.5])
     if noise:
-        random_variable = ss.multivariate_normal([-0.7, 0.8], [[0.03, 0.0], [0.0, 0.05]])
-        p_flip = random_variable.pdf(x)
-        p_flip = p_flip / (3 * p_flip.max())
-        flip = p_flip > np.random.rand(p_flip.shape[0])
-
-        y[flip] = 1 - y[flip]
+        dstr = tfp.distributions.MultivariateNormalDiag(loc=[-0.7, 0.8], scale_diag=[0.03,0.05])
+        p_flip = dstr.prob(x)
+        result = tf.math.top_k(p_flip,k=5000,sorted=True)
+        indices_to_flip = result.indices[0::5]
+        
+        y[indices_to_flip] = 1 - y[indices_to_flip]
 
     x = x.astype(float)
     y = y.astype(float)
