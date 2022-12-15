@@ -55,4 +55,6 @@ jobs:
         run: pip install dist/capsa*
 
       - name: Test it
-        run: python -m unittest test/unit_test.py -b
+        run: |
+          cd ./test
+          python -m unittest unit_test.py -b
