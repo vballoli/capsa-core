@@ -2,12 +2,12 @@ name: build_all_workflow
 
 # build for all python versions
 on:
-
   workflow_dispatch:
-    inputs:
-
   workflow_call:
-    inputs:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
 
 jobs:
 
