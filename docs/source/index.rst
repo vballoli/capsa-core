@@ -6,6 +6,21 @@
 Capsa Documentation
 ===================
 
+.. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/GitHub_Logo.png/800px-GitHub_Logo.png
+   :width: 55
+   :target: https://github.com/themis-ai/capsa
+
+.. image:: https://img.shields.io/pypi/pyversions/capsa
+
+.. image:: https://img.shields.io/pypi/v/capsa?color=green
+
+.. image:: https://pepy.tech/badge/capsa
+
+.. image:: https://img.shields.io/github/license/themis-ai/capsa?color=green&logo=slack
+
+
+
+
 .. toctree::
    :maxdepth: 1
 
@@ -27,6 +42,7 @@ Capsa Documentation
 .. **capsa** *(noun): latin root for a* **capsule** *or container.*
 
 :abbr:`Capsa ((noun): latin root for a capsule or container.)` automatically wraps ML workflows to achieve risk-aware learning and deployment.
+
 
 
 .. image:: assets/cycle-light.png
