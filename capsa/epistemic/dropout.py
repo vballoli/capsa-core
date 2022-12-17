@@ -25,8 +25,8 @@ class DropoutWrapper(BaseWrapper):
     Monte Carlo sampling. Computing the first and second moments from the ``T`` stochastic
     samples yields a prediction and uncertainty estimate, respectively.
 
-    Example usage outside of the ``ControllerWrapper`` (standalone):
-        >>> # initialize a tf.keras model
+    Example of usage:
+        >>> # initialize a keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = DropoutWrapper(user_model)
@@ -35,14 +35,12 @@ class DropoutWrapper(BaseWrapper):
         >>> model.fit(...)
     """
 
-    def __init__(self, base_model, is_standalone=True, p=0.1):
+    def __init__(self, base_model, p=0.1):
         """
         Parameters
         ----------
         base_model : tf.keras.Model
             A model to be transformed into a risk-aware variant.
-        is_standalone : bool, default True
-            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         p : float, default 0.1
             Float between 0 and 1. Fraction of the units to drop.
 
@@ -53,7 +51,7 @@ class DropoutWrapper(BaseWrapper):
         model : tf.keras.Model
             ``base_model`` with added dropout layers.
         """
-        super(DropoutWrapper, self).__init__(base_model, is_standalone)
+        super(DropoutWrapper, self).__init__(base_model)
 
         self.metric_name = "dropout"
 
@@ -63,13 +61,7 @@ class DropoutWrapper(BaseWrapper):
         else:
             self.model = add_dropout(base_model, p)
 
-        if not self.is_standalone:
-            raise NotImplementedError(
-                """Using ``DropoutWrapper`` inside the ``ControllerWrapper``
-                is not currently supported."""
-            )
-
-    def loss_fn(self, x, y, features=None):
+    def loss_fn(self, x, y):
         """
         Parameters
         ----------
@@ -77,9 +69,6 @@ class DropoutWrapper(BaseWrapper):
             Input.
         y : tf.Tensor
             Ground truth label.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Returns
         -------
@@ -95,7 +84,7 @@ class DropoutWrapper(BaseWrapper):
         metric_loss = 0
         return metric_loss, y_hat
 
-    def call(self, x, training=False, return_risk=True, features=None, T=20):
+    def call(self, x, training=False, return_risk=True, T=20):
         """
         Forward pass of the model
 
@@ -107,9 +96,6 @@ class DropoutWrapper(BaseWrapper):
             Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
         T : int, default 20
             Number of forward passes with different dropout masks.
 

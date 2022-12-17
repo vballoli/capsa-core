@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from capsa import ControllerWrapper, EnsembleWrapper, MVEWrapper, VAEWrapper
+from capsa import EnsembleWrapper, MVEWrapper, VAEWrapper
 from capsa.utils import (
     get_user_model,
     plot_loss,
@@ -49,40 +49,6 @@ def test_ensemble(use_case):
         risk_tensor = model(x_val)
         plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
 
-    elif use_case == 3:
-
-        model = ControllerWrapper(
-            user_model,
-            metrics=[
-                VAEWrapper,
-                EnsembleWrapper(
-                    user_model,
-                    is_standalone=False,
-                    metric_wrapper=MVEWrapper,
-                    num_members=3,
-                ),
-            ],
-        )
-
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
-            loss=tf.keras.losses.MeanSquaredError(),
-            # optionally, metrics could also be specified
-            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
-        )
-
-        history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
-        plot_loss(history)
-
-        metrics_out = model(x_val)
-
-        vae_risk_tensor = metrics_out["vae"]
-        plot_risk_2d(x_val, y_val, vae_risk_tensor, "vae")
-
-        mve_risk_tensor = metrics_out["ensemble"]
-        plot_risk_2d(x_val, y_val, mve_risk_tensor, "ensemble of mve")
-
 
 test_ensemble(1)
 test_ensemble(2)
-test_ensemble(3)

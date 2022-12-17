@@ -12,23 +12,11 @@ class EnsembleWrapper(BaseWrapper):
     This approach presents the gold-standard of estimating epistemic uncertainty.
     However, it comes with significant computational costs.
 
-    Example usage outside of the ``ControllerWrapper`` (standalone):
-        >>> # initialize a tf.keras model
+    Example of usage:
+        >>> # initialize a keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = EnsembleWrapper(user_model, metric_wrapper=MVEWrapper, num_members=3)
-        >>> # compile and fit as a regular tf.keras model
-        >>> model.compile(...)
-        >>> model.fit(...)
-
-    Example usage inside of the ``ControllerWrapper``:
-        >>> # initialize a tf.keras model
-        >>> user_model = Unet()
-        >>> # wrap the model to transform it into a risk-aware variant
-        >>> model = ControllerWrapper(
-        >>>     user_model,
-        >>>     metrics=[EnsembleWrapper(user_model, is_standalone=False, metric_wrapper=MVEWrapper, num_members=3)],
-        >>> )
         >>> # compile and fit as a regular tf.keras model
         >>> model.compile(...)
         >>> model.fit(...)
@@ -37,7 +25,6 @@ class EnsembleWrapper(BaseWrapper):
     def __init__(
         self,
         base_model,
-        is_standalone=True,
         num_members=3,
         metric_wrapper=None,
         kwargs={},
@@ -47,8 +34,6 @@ class EnsembleWrapper(BaseWrapper):
         ----------
         base_model : tf.keras.Model
             A model to be transformed into a risk-aware variant.
-        is_standalone : bool, default True
-            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         num_members : int, default 3
             Number of members in the deep ensemble.
         metric_wrapper : capsa.BaseWrapper, default None
@@ -57,7 +42,7 @@ class EnsembleWrapper(BaseWrapper):
         kwargs : dict
             Keyword args used to initialize metric wrappers, used only if ``metric_wrapper`` is provided.
             The kwargs are metric wrapper specific, they could be different depending on the wrapper to
-            be ensembled. But they should not include ``base_model`` and ``is_standalone`` keywords.
+            be ensembled. But they should not include the ``base_model`` keyword.
 
 
         Attributes
@@ -68,25 +53,13 @@ class EnsembleWrapper(BaseWrapper):
             An empty dict, will be used to map ``metric_name``s (string identifiers) of the wrappers that
             a user wants to ensemble to their respective compiled models.
         """
-        super(EnsembleWrapper, self).__init__(base_model, is_standalone)
+        super(EnsembleWrapper, self).__init__(base_model)
 
         self.metric_name = "ensemble"
         self.metric_wrapper = metric_wrapper
         self.num_members = num_members
         self.metrics_compiled = {}
         self.kwargs = kwargs
-
-        if self.metric_wrapper == None and not is_standalone:
-            # need to modify user_model's train_step to return
-            # grad wrt to the input in addition to the keras_metric.
-            # doing it right here is not a clean/general solution,
-            # a better solution is to create a separate thin
-            # wrapper to wrap a user_model before using it in our
-            # metric wrappers, and implement that logic there
-            raise NotImplementedError(
-                """Wrapping a ``base_model`` with the ``EnsembleWrapper``
-                inside the ``ControllerWrapper`` is not currently supported."""
-            )
 
     def compile(self, optimizer, loss, metrics=None):
         """
@@ -135,9 +108,7 @@ class EnsembleWrapper(BaseWrapper):
             m = (
                 m
                 if self.metric_wrapper == None
-                else self.metric_wrapper(
-                    m, is_standalone=self.is_standalone, **self.kwargs
-                )
+                else self.metric_wrapper(m, **self.kwargs)
             )
             m_name = (
                 f"usermodel_{i}"
@@ -147,69 +118,33 @@ class EnsembleWrapper(BaseWrapper):
             m.compile(optimizer[i], loss[i], metrics[i])
             self.metrics_compiled[m_name] = m
 
-    def train_step(self, data, features=None, prefix=None):
+    def train_step(self, data):
         """
-        If ``EnsembleWrapper`` is used inside the ``ControllerWrapper`` (in other words, when
-        ``features`` are provided by the ``ControllerWrapper``), the gradient of each member's
-        loss w.r.t to its input (``features``) is computed and averaged out between members in
-        the ensemble, it is later used in the ``ControllerWrapper`` to update the shared
-        ``feature extractor``.
+        The logic for one training step.
 
         Parameters
         ----------
         data : tuple
             (x, y) pairs, as in the regular Keras ``train_step``.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
-        prefix : str, default None
-            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
-            such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
-            Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call 'metric wrappers'. Prefix will be passed to
-            the ``train_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
-            otherwise evaluates to ``None``.
 
         Returns
         -------
         keras_metrics : dict
-            `Keras metrics <https://keras.io/api/metrics/>`_, if metric wrapper is trained
-            outside the ``ControllerWrapper``.
-        tuple
-            - keras_metrics : dict
-            - gradients : tf.Tensor
-                Gradient with respect to the input (``features``), if inside the ``ControllerWrapper``.
+            `Keras metrics <https://keras.io/api/metrics/>`_.
         """
         keras_metrics = {}
-
-        if not self.is_standalone:
-            accum_grads = tf.zeros_like(features)
-            scalar = 1 / self.num_members
 
         for name, wrapper in self.metrics_compiled.items():
 
             # ensembling user model
             if self.metric_wrapper == None:
-                # outside of controller wrapper
-                if self.is_standalone:
-                    _ = wrapper.train_step(data)
-                    for m in wrapper.metrics:
-                        keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
-                # within controller wrapper
-                else:
-                    raise NotImplementedError
+                _ = wrapper.train_step(data)
+                for m in wrapper.metrics:
+                    keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
 
             # ensembling one of our metric wrappers
             else:
-                # outside of controller wrapper
-                if self.is_standalone:
-                    keras_metric = wrapper.train_step(data, prefix=name)
-                # within controller wrapper
-                else:
-                    keras_metric, grad = wrapper.train_step(
-                        data, features, f"{prefix}_{name}"
-                    )
-                    accum_grads += tf.scalar_mul(scalar, grad[0])
+                keras_metric = wrapper.train_step(data, prefix=name)
                 keras_metrics.update(keras_metric)
 
         # todo-high: this will not work if metrics contains non loss items, or even two different losses
@@ -219,12 +154,9 @@ class EnsembleWrapper(BaseWrapper):
         # "average loss" which is an average of all member's losses.
         # keras_metrics["average_loss"] = tf.reduce_mean(list(keras_metrics.values()))
 
-        if self.is_standalone:
-            return keras_metrics
-        else:
-            return keras_metrics, accum_grads
+        return keras_metrics
 
-    def test_step(self, data, features=None, prefix=None):
+    def test_step(self, data):
         """
         The logic for one evaluation step.
 
@@ -232,22 +164,11 @@ class EnsembleWrapper(BaseWrapper):
         ----------
         data : tuple
             (x, y) pairs, as in the regular Keras ``test_step``.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
-        prefix : str, default None
-            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
-            such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
-            Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call 'metric wrappers'. Prefix will be passed to
-            the ``test_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
-            otherwise evaluates to ``None``.
 
         Returns
         -------
         keras_metrics : dict
-            `Keras metrics <https://keras.io/api/metrics/>`_, if metric wrapper is trained
-            outside the ``ControllerWrapper``.
+            `Keras metrics <https://keras.io/api/metrics/>`_.
         """
         keras_metrics = {}
 
@@ -255,28 +176,18 @@ class EnsembleWrapper(BaseWrapper):
 
             # ensembling user model
             if self.metric_wrapper == None:
-                # outside of controller wrapper
-                if self.is_standalone:
-                    _ = wrapper.test_step(data)
-                    for m in wrapper.metrics:
-                        keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
-                # within controller wrapper
-                else:
-                    raise NotImplementedError
+                _ = wrapper.test_step(data)
+                for m in wrapper.metrics:
+                    keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
 
             # ensembling one of our metric wrappers
             else:
-                # outside of controller wrapper
-                if self.is_standalone:
-                    keras_metric = wrapper.test_step(data, prefix=name)
-                # within controller wrapper
-                else:
-                    keras_metric = wrapper.test_step(data, features, f"{prefix}_{name}")
+                keras_metric = wrapper.test_step(data, prefix=name)
                 keras_metrics.update(keras_metric)
 
         return keras_metrics
 
-    def call(self, x, training=False, return_risk=True, features=None):
+    def call(self, x, training=False, return_risk=True):
         """
         Forward pass of the model
 
@@ -288,9 +199,6 @@ class EnsembleWrapper(BaseWrapper):
             Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Returns
         -------
@@ -307,7 +215,7 @@ class EnsembleWrapper(BaseWrapper):
                 out = wrapper(x)
             # ensembling one of our own metrics
             else:
-                out = wrapper(x, training, return_risk, features)
+                out = wrapper(x, training, return_risk)
             outs.append(out)
 
         if not return_risk:

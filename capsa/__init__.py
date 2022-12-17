@@ -1,8 +1,6 @@
 """ Top-level package for capsa. """
-from .controller_wrapper import ControllerWrapper
 from .base_wrapper import BaseWrapper
 from .risk_tensor import RiskTensor
-from .wrap import wrap
 
 from .bias import HistogramWrapper
 from .aleatoric import MVEWrapper
