@@ -133,11 +133,11 @@ def visualize_adversarial(list_vis):
 
         ax[0, i].imshow(x)
         ax[1, i].imshow(
-            tf.clip_by_value(y_hat, clip_value_min=0, clip_value_max=1),
+            tf.clip_by_value(y_hat[:, :, 0], clip_value_min=0, clip_value_max=1),
             cmap=plt.cm.jet,
         )
         ax[2, i].imshow(
-            tf.clip_by_value(risk, clip_value_min=0, clip_value_max=1),
+            tf.clip_by_value(risk[:, :, 0], clip_value_min=0, clip_value_max=1),
             cmap=plt.cm.jet,
         )
 
