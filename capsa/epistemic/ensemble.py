@@ -147,12 +147,19 @@ class EnsembleWrapper(BaseWrapper):
                 keras_metric = wrapper.train_step(data, prefix=name)
                 keras_metrics.update(keras_metric)
 
-        # todo-high: this will not work if metrics contains non loss items, or even two different losses
-        # If user utilizes a callback, which saves weights by monitoring loss,
-        # but in this model there's no single loss that we can monitor -- each member
-        # has its own loss. So add another entry to the keras metric dict called
-        # "average loss" which is an average of all member's losses.
-        # keras_metrics["average_loss"] = tf.reduce_mean(list(keras_metrics.values()))
+        # # If user utilizes a callback, which saves weights by monitoring loss,
+        # # but in this model there's no single loss that we can monitor -- each member
+        # # has its own loss. So add another entry to the keras metric dict called
+        # # "average loss" which is an average of all member's losses.
+        # # Account for the case of metrics containing two different losses, or even non loss items.
+        # if self.metric_wrapper == None:
+        #     keras_metrics["loss"] = tf.reduce_mean(
+        #         [v for k, v in keras_metrics.items() if "loss" in k]
+        #     )
+        # else:
+        #     keras_metrics["wrapper_loss"] = tf.reduce_mean(
+        #         [v for k, v in keras_metrics.items() if "wrapper_loss" in k]
+        #     )
 
         return keras_metrics
 
@@ -184,6 +191,15 @@ class EnsembleWrapper(BaseWrapper):
             else:
                 keras_metric = wrapper.test_step(data, prefix=name)
                 keras_metrics.update(keras_metric)
+
+        # if self.metric_wrapper == None:
+        #     keras_metrics["loss"] = tf.reduce_mean(
+        #         [v for k, v in keras_metrics.items() if "val_loss" in k]
+        #     )
+        # else:
+        #     keras_metrics["wrapper_loss"] = tf.reduce_mean(
+        #         [v for k, v in keras_metrics.items() if "val_wrapper_loss" in k]
+        #     )
 
         return keras_metrics
 
