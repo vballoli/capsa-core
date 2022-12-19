@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow import keras
 
 from capsa import DropoutWrapper
 from capsa.utils import (
@@ -25,7 +24,7 @@ def test_regression():
         optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
         loss=tf.keras.losses.MeanSquaredError(),
         # optionally, metrics could also be specified
-        metrics=keras.metrics.CosineSimilarity(name="cos"),
+        metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
     )
     history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
     plot_loss(history)

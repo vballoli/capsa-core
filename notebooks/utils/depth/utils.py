@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 
 import tensorflow as tf
-from tensorflow import keras
 
 import config
 from models import unet

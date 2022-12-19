@@ -2,7 +2,6 @@ import tempfile
 
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras
 
 from capsa import RiskTensor
 
@@ -14,12 +13,12 @@ risk_tensor = RiskTensor(
     bias=np.random.randn(3, 1).astype("float32"),
 )
 
-# RiskTensor (subclass of tf extension type) can be passed as an input to a Keras model,
-# passed between Keras layers, and returned by Keras models.
+# RiskTensor (subclass of tf extension type) can be passed as an input to a tf.keras model,
+# passed between tf.keras layers, and returned by tf.keras models.
 
 # To feed a RiskTensor (subclass of tf extension type) into a model/layer,
 # we need to set the type_spec to the RiskTensor's (extension type's) TypeSpec.
-# If the Keras model will be used to process batches, then the type_spec must
+# If the tf.keras model will be used to process batches, then the type_spec must
 # include the batch dimension.
 
 input_spec = tf.type_spec_from_value(risk_tensor)
@@ -38,19 +37,19 @@ input_spec = tf.type_spec_from_value(risk_tensor)
 # >>> )
 
 
-### Test case 1 -- construct a Keras model that accepts MaskedTensor inputs,
-# using standard Keras layers.
+### Test case 1 -- construct a tf.keras model that accepts MaskedTensor inputs,
+# using standard tf.keras layers.
 
 # Relies on our 'risk_matmul' func, thus a dense layer returns
 # tf.Tensor (because under the hood dense layer uses matmul,
 # whose dispatcher we modified with 'risk_matmul' to return
 # a tf.Tensor) and not a RiskTensor.
 
-model = keras.Sequential(
+model = tf.keras.Sequential(
     [
-        keras.layers.Input(type_spec=input_spec),
-        keras.layers.Dense(16, activation="relu"),
-        keras.layers.Dense(1),
+        tf.keras.layers.Input(type_spec=input_spec),
+        tf.keras.layers.Dense(16, activation="relu"),
+        tf.keras.layers.Dense(1),
     ]
 )
 
@@ -60,10 +59,10 @@ model(risk_tensor)
 print("\nTest case 1 - Done!\n")
 
 
-### Test case 2 -- define new Keras layers that process RiskTensors.
+### Test case 2 -- define new tf.keras layers that process RiskTensors.
 
 
-class RiskSumLayer(keras.layers.Layer):
+class RiskSumLayer(tf.keras.layers.Layer):
     """dummy class for demonstration purposes"""
 
     def __init__(self):
@@ -82,9 +81,9 @@ class RiskSumLayer(keras.layers.Layer):
         )
 
 
-model = keras.Sequential(
+model = tf.keras.Sequential(
     [
-        keras.layers.Input(type_spec=input_spec),
+        tf.keras.layers.Input(type_spec=input_spec),
         RiskSumLayer(),
     ]
 )
@@ -95,7 +94,7 @@ print("\nTest case 2 - Done!\n")
 ### Test case 3 -- use the custom layers to create a simple model that operates on RiskTensors.
 
 
-class RiskLinear(keras.layers.Layer):
+class RiskLinear(tf.keras.layers.Layer):
     """dummy class for demonstration purposes"""
 
     def __init__(self, units=16):
@@ -132,7 +131,7 @@ class RiskLinear(keras.layers.Layer):
         )
 
 
-class RiskModel(keras.Model):
+class RiskModel(tf.keras.Model):
     """dummy class for demonstration purposes"""
 
     def __init__(self):
@@ -155,7 +154,7 @@ print("\nTest case 3 - Done!\n")
 ### Test case 4 -- save model.
 
 # https://www.tensorflow.org/guide/extension_type#savedmodel
-# Keras models that use extension types may be saved using SavedModel.
+# tf.keras models that use extension types may be saved using SavedModel.
 # Extension types can be used transparently with the functions and methods
 # defined by a SavedModel. SavedModel can save models, layers, and functions
 # that process extension types.
