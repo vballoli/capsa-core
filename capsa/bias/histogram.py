@@ -1,6 +1,5 @@
 from numpy import histogram
 import tensorflow as tf
-from tensorflow import keras
 import tensorflow_probability as tfp
 
 from ..controller_wrapper import ControllerWrapper

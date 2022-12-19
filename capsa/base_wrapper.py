@@ -1,10 +1,9 @@
 import tensorflow as tf
-from tensorflow import keras
 
 from .utils import _get_out_dim, copy_layer
 
 
-class BaseWrapper(keras.Model):
+class BaseWrapper(tf.keras.Model):
     """Base class for a metric wrapper, all of our individual metric wrappers
     (``MVEWrapper``, ``HistogramWrapper``, ``DropoutWrapper``, etc.) subclass it.
 
@@ -170,7 +169,7 @@ class BaseWrapper(keras.Model):
 
         self.compiled_metrics.update_state(y, y_hat)
         prefix = self.metric_name if prefix == None else prefix
-        # prefix 'val' is added by keras automatically, so no need to add it here
+        # prefix 'val' is added by tf.keras automatically, so no need to add it here
         keras_metrics = {
             f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
         }
