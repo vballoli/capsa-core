@@ -1,6 +1,5 @@
 import tensorflow as tf
-from tensorflow import keras
-from keras.layers import (
+from tensorflow.keras.layers import (
     Dense,
     Conv1D,
     Conv2D,
@@ -27,11 +26,11 @@ class DropoutWrapper(BaseWrapper):
     samples yields a prediction and uncertainty estimate, respectively.
 
     Example usage outside of the ``ControllerWrapper`` (standalone):
-        >>> # initialize a keras model
+        >>> # initialize a tf.keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = DropoutWrapper(user_model)
-        >>> # compile and fit as a regular keras model
+        >>> # compile and fit as a regular tf.keras model
         >>> model.compile(...)
         >>> model.fit(...)
     """

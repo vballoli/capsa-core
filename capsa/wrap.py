@@ -1,5 +1,3 @@
-import tensorflow as tf
-from tensorflow import keras
 from .aleatoric import MVEWrapper
 from .bias import HistogramWrapper
 from .epistemic import VAEWrapper, DropoutWrapper, EnsembleWrapper

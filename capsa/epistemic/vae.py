@@ -1,8 +1,7 @@
 from random import sample
 
 import tensorflow as tf
-from tensorflow import keras
-from keras import layers
+from tensorflow.keras import layers
 
 from ..utils import copy_layer, _get_out_dim
 from ..base_wrapper import BaseWrapper
@@ -51,20 +50,20 @@ class VAEWrapper(BaseWrapper):
     make sense to use the VAEWrapper with e.g. 1-dim inputs.
 
     Example usage outside of the ``ControllerWrapper`` (standalone):
-        >>> # initialize a keras model
+        >>> # initialize a tf.keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = VAEWrapper(user_model)
-        >>> # compile and fit as a regular keras model
+        >>> # compile and fit as a regular tf.keras model
         >>> model.compile(...)
         >>> model.fit(...)
 
     Example usage inside of the ``ControllerWrapper``:
-        >>> # initialize a keras model
+        >>> # initialize a tf.keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = ControllerWrapper(user_model, metrics=[VAEWrapper])
-        >>> # compile and fit as a regular keras model
+        >>> # compile and fit as a regular tf.keras model
         >>> model.compile(...)
         >>> model.fit(...)
     """

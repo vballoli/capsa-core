@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow import keras
 
 from capsa import EnsembleWrapper
 from data import get_data_v1, get_data_v2
@@ -14,11 +13,11 @@ def test_exceptions(use_case):
     # get_config not implemented
     if use_case == 1:
 
-        class CustomModel(keras.Model):
+        class CustomModel(tf.keras.Model):
             def __init__(self, hidden_units):
                 super(CustomModel, self).__init__()
                 self.hidden_units = hidden_units
-                self.dense_layers = [keras.layers.Dense(u) for u in hidden_units]
+                self.dense_layers = [tf.keras.layers.Dense(u) for u in hidden_units]
 
             def call(self, inputs):
                 x = inputs
@@ -38,8 +37,8 @@ def test_exceptions(use_case):
 
             model = EnsembleWrapper(their_model, num_members=5)
             model.compile(
-                optimizer=[keras.optimizers.Adam(learning_rate=1e-2)],
-                loss=[keras.losses.MeanSquaredError()],
+                optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
+                loss=[tf.keras.losses.MeanSquaredError()],
             )
             history = model.fit(x, y, epochs=100)
 
@@ -64,8 +63,8 @@ def test_exceptions(use_case):
 
             model = EnsembleWrapper(their_model, num_members=5)
             model.compile(
-                optimizer=[keras.optimizers.Adam(learning_rate=1e-2)],
-                loss=[keras.losses.MeanSquaredError()],
+                optimizer=[tf.keras.optimizers.Adam(learning_rate=1e-2)],
+                loss=[tf.keras.losses.MeanSquaredError()],
             )
             history = model.fit(x, y, epochs=100)
 

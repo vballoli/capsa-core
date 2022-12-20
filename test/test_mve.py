@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow import keras
 
 from capsa import ControllerWrapper, MVEWrapper  # , HistogramWrapper, HistogramCallback
 from capsa.utils import get_user_model, plot_loss, get_preds_names, plot_risk_2d
@@ -18,10 +17,10 @@ def test_regression(use_case):
         model = MVEWrapper(user_model, is_classification=False)
 
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-            loss=keras.losses.MeanSquaredError(),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
+            loss=tf.keras.losses.MeanSquaredError(),
             # optionally, metrics could also be specified
-            metrics=keras.metrics.CosineSimilarity(name="cos"),
+            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
         )
         history = model.fit(ds_train, epochs=10, validation_data=(x_val, y_val))
         plot_loss(history)
@@ -34,9 +33,9 @@ def test_regression(use_case):
 
         model.compile(
             # user needs to specify optim and loss for each metric
-            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-            loss=keras.losses.MeanSquaredError(),
-            metrics=keras.metrics.CosineSimilarity(name="cos"),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
+            loss=tf.keras.losses.MeanSquaredError(),
+            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
         )
 
         history = model.fit(ds_train, epochs=10, validation_data=(x_val, y_val))
@@ -58,9 +57,9 @@ def test_regression_predict():
 
     model.compile(
         # user needs to specify optim and loss for each metric
-        optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-        loss=keras.losses.MeanSquaredError(),
-        metrics=keras.metrics.CosineSimilarity(name="cos"),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
+        loss=tf.keras.losses.MeanSquaredError(),
+        metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
     )
 
     history = model.fit(ds_train, epochs=10, validation_data=(x_val, y_val))

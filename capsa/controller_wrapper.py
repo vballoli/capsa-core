@@ -1,9 +1,8 @@
 import tensorflow as tf
-from tensorflow import keras
-from keras import optimizers as optim
+from tensorflow.keras import optimizers as optim
 
 
-class ControllerWrapper(keras.Model):
+class ControllerWrapper(tf.keras.Model):
     """Implements logic for chaining multiple individual metric wrappers together.
 
     The feature extractor, which we define by default as the model until its last layer, can be leveraged as
@@ -67,10 +66,10 @@ class ControllerWrapper(keras.Model):
         self.metric_compiled = {}
 
         self.base_model = base_model
-        self.feature_extractor = keras.Model(
+        self.feature_extractor = tf.keras.Model(
             base_model.inputs, base_model.layers[-2].output
         )
-        self.optim = keras.optimizers.Adam(learning_rate=2e-3)
+        self.optim = tf.keras.optimizers.Adam(learning_rate=2e-3)
 
     def compile(self, optimizer, loss, metrics=None, *args, **kwargs):
         """

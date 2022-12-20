@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow import keras
 
 from capsa import ControllerWrapper, EnsembleWrapper, MVEWrapper, VAEWrapper
 from capsa.utils import (
@@ -23,10 +22,10 @@ def test_ensemble(use_case):
 
         model = EnsembleWrapper(user_model, num_members=3)
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-            loss=keras.losses.MeanSquaredError(),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
+            loss=tf.keras.losses.MeanSquaredError(),
             # optionally, metrics could also be specified
-            metrics=keras.metrics.CosineSimilarity(name="cos"),
+            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
         )
 
         history = model.fit(x, y, epochs=30, validation_data=(x_val, y_val))
@@ -40,8 +39,8 @@ def test_ensemble(use_case):
         model = EnsembleWrapper(user_model, metric_wrapper=MVEWrapper, num_members=5)
 
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-            loss=keras.losses.MeanSquaredError(),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
+            loss=tf.keras.losses.MeanSquaredError(),
         )
 
         history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
@@ -66,10 +65,10 @@ def test_ensemble(use_case):
         )
 
         model.compile(
-            optimizer=keras.optimizers.Adam(learning_rate=2e-3),
-            loss=keras.losses.MeanSquaredError(),
+            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
+            loss=tf.keras.losses.MeanSquaredError(),
             # optionally, metrics could also be specified
-            metrics=keras.metrics.CosineSimilarity(name="cos"),
+            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
         )
 
         history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))

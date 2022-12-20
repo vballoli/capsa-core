@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow import keras
 
 from capsa import ControllerWrapper, VAEWrapper
 from capsa.utils import (
@@ -29,7 +28,7 @@ def test_vae(use_case):
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
             # optionally, metrics could also be specified
-            metrics=keras.metrics.CosineSimilarity(name="cos"),
+            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
         )
 
         history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
@@ -43,7 +42,7 @@ def test_vae(use_case):
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
             loss=tf.keras.losses.MeanSquaredError(),
-            metrics=keras.metrics.CosineSimilarity(name="cos"),
+            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
         )
 
         history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))

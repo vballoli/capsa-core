@@ -1,6 +1,5 @@
 import tensorflow as tf
-from tensorflow import keras
-from keras import optimizers as optim
+from tensorflow.keras import optimizers as optim
 
 from ..base_wrapper import BaseWrapper
 from ..risk_tensor import RiskTensor
@@ -14,23 +13,23 @@ class EnsembleWrapper(BaseWrapper):
     However, it comes with significant computational costs.
 
     Example usage outside of the ``ControllerWrapper`` (standalone):
-        >>> # initialize a keras model
+        >>> # initialize a tf.keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = EnsembleWrapper(user_model, metric_wrapper=MVEWrapper, num_members=3)
-        >>> # compile and fit as a regular keras model
+        >>> # compile and fit as a regular tf.keras model
         >>> model.compile(...)
         >>> model.fit(...)
 
     Example usage inside of the ``ControllerWrapper``:
-        >>> # initialize a keras model
+        >>> # initialize a tf.keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = ControllerWrapper(
         >>>     user_model,
         >>>     metrics=[EnsembleWrapper(user_model, is_standalone=False, metric_wrapper=MVEWrapper, num_members=3)],
         >>> )
-        >>> # compile and fit as a regular keras model
+        >>> # compile and fit as a regular tf.keras model
         >>> model.compile(...)
         >>> model.fit(...)
     """
@@ -124,10 +123,10 @@ class EnsembleWrapper(BaseWrapper):
 
         for i in range(self.num_members):
 
-            if isinstance(self.base_model, keras.Sequential):
-                m = keras.Sequential.from_config(base_model_config)
-            elif isinstance(self.base_model, keras.Model):
-                m = keras.Model.from_config(base_model_config)
+            if isinstance(self.base_model, tf.keras.Sequential):
+                m = tf.keras.Sequential.from_config(base_model_config)
+            elif isinstance(self.base_model, tf.keras.Model):
+                m = tf.keras.Model.from_config(base_model_config)
             else:
                 raise Exception(
                     "Please provide a Sequential, Functional or subclassed model."
