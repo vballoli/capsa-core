@@ -26,7 +26,7 @@ class BaseWrapper(tf.keras.Model):
         - changing the loss.
     """
 
-    def __init__(self, base_model, is_standalone):
+    def __init__(self, base_model):
         """
         We add a few instance variables in the ``init`` of the base class to make it
         available by default to the metric wrappers that subclass it.
@@ -35,17 +35,11 @@ class BaseWrapper(tf.keras.Model):
         ----------
         base_model : tf.keras.Model
             A model to be transformed into a risk-aware variant.
-        is_standalone : bool
-            Indicates whether or not the metric wrapper will be used inside the ``ControllerWrapper``.
 
         Attributes
         ----------
         feature_extractor : tf.keras.Model
-            Creates a ``feature_extractor`` if the metric wrapper will be used outside
-            of the ControllerWrapper (``is_standalone`` evaluates to True), otherwise
-            expects extracted features to be passed in ``train_step`` (in this case,
-            the ControllerWrapper  will create a shared ``feature_extractor`` and pass
-            the extracted features).
+            Creates a ``feature_extractor`` from the provided model.
         out_layer : tf.keras.layers.Layer
             A duplicate of the last layer of the base_model which is used to predict ``y_hat``
             (same output as before the wrapping).
@@ -55,20 +49,18 @@ class BaseWrapper(tf.keras.Model):
         super(BaseWrapper, self).__init__()
 
         self.base_model = base_model
-        self.is_standalone = is_standalone
-
-        if is_standalone:
-            self.feature_extractor = tf.keras.Model(
-                base_model.inputs, base_model.layers[-2].output
-            )
+        self.feature_extractor = tf.keras.Model(
+            base_model.inputs, base_model.layers[-2].output
+        )
 
         last_layer = base_model.layers[-1]
         self.out_layer = copy_layer(last_layer)
         self.out_dim = _get_out_dim(base_model)
 
-    @tf.function
-    def train_step(self, data, features=None, prefix=None):
+    def train_step(self, data, prefix=None):
         """
+        The logic for one training step.
+
         Adds the compiled loss such that the models that subclass this class don't need to explicitly add it.
         Thus the ``metric_loss`` returned from such a model is not expected to reflect the compiled
         (user specified) loss -- because it is added here.
@@ -83,31 +75,21 @@ class BaseWrapper(tf.keras.Model):
         ----------
         data : tuple
             (x, y) pairs, as in the regular Keras ``train_step``.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``train_step`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
         prefix : str, default None
             Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
             such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
             Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call "metric wrappers". Prefix will be passed to
-            the ``train_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
-            otherwise evaluates to ``None``.
+            not to be confused with what we call "metric wrappers".
 
         Returns
         -------
         keras_metrics : dict
-            `Keras metrics <https://keras.io/api/metrics/>`_, if metric wrapper is trained
-            outside the ``ControllerWrapper``.
-        tuple
-            - keras_metrics : dict
-            - gradients : tf.Tensor
-                Gradient with respect to the input (``features``), if inside the ``ControllerWrapper``.
+            `Keras metrics <https://keras.io/api/metrics/>`_.
         """
         x, y = data
 
         with tf.GradientTape() as t:
-            metric_loss, y_hat = self.loss_fn(x, y, features)
+            metric_loss, y_hat = self.loss_fn(x, y)
             compiled_loss = self.compiled_loss(
                 y, y_hat, regularization_losses=self.losses
             )
@@ -124,13 +106,9 @@ class BaseWrapper(tf.keras.Model):
         }
         keras_metrics[f"{prefix}_wrapper_loss"] = loss
 
-        if self.is_standalone:
-            return keras_metrics
-        else:
-            return keras_metrics, tf.gradients(loss, features)
+        return keras_metrics
 
-    @tf.function
-    def test_step(self, data, features=None, prefix=None):
+    def test_step(self, data, prefix=None):
         """
         The logic for one evaluation step.
 
@@ -144,26 +122,20 @@ class BaseWrapper(tf.keras.Model):
         ----------
         data : tuple
             (x, y) pairs, as in the regular Keras ``test_step``.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``test_step`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
         prefix : str, default None
             Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
             such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
             Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call "metric wrappers". Prefix will be passed to
-            the ``test_step`` if the metric wrapper is used inside the ``ControllerWrapper``,
-            otherwise evaluates to ``None``.
+            not to be confused with what we call "metric wrappers".
 
         Returns
         -------
         keras_metrics : dict
-            `Keras metrics <https://keras.io/api/metrics/>`_, if metric wrapper is trained
-            outside the ``ControllerWrapper``.
+            `Keras metrics <https://keras.io/api/metrics/>`_`.
         """
         x, y = data
 
-        metric_loss, y_hat = self.loss_fn(x, y, features)
+        metric_loss, y_hat = self.loss_fn(x, y)
         compiled_loss = self.compiled_loss(y, y_hat, regularization_losses=self.losses)
         loss = metric_loss + compiled_loss
 
@@ -177,7 +149,7 @@ class BaseWrapper(tf.keras.Model):
 
         return keras_metrics
 
-    def loss_fn(self, x, y, features=None):
+    def loss_fn(self, x, y):
         """
         An empty method, raises exception to indicate that this method requires derived classes to override it.
 
@@ -190,9 +162,6 @@ class BaseWrapper(tf.keras.Model):
             Input.
         y : tf.Tensor
             Ground truth label.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Raises
         ------
@@ -200,7 +169,7 @@ class BaseWrapper(tf.keras.Model):
         """
         raise NotImplementedError("Must be implemented in subclasses.")
 
-    def call(self, x, training=False, return_risk=True, features=None):
+    def call(self, x, training=False, return_risk=True):
         """
         An empty method, raises exception to indicate that this method requires derived classes to override it.
 
@@ -212,9 +181,6 @@ class BaseWrapper(tf.keras.Model):
             Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Raises
         ------

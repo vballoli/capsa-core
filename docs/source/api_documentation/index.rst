@@ -6,7 +6,6 @@ Metric Wrapper API
 .. toctree::
     :maxdepth: 1
 
-    ControllerWrapper
     BaseWrapper
     RiskTensor
 

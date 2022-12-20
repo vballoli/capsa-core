@@ -49,33 +49,22 @@ class VAEWrapper(BaseWrapper):
     talk about bottlenecking this representation even further -- thus it doesn't
     make sense to use the VAEWrapper with e.g. 1-dim inputs.
 
-    Example usage outside of the ``ControllerWrapper`` (standalone):
-        >>> # initialize a tf.keras model
+    Example of usage:
+        >>> # initialize a keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
         >>> model = VAEWrapper(user_model)
         >>> # compile and fit as a regular tf.keras model
         >>> model.compile(...)
         >>> model.fit(...)
-
-    Example usage inside of the ``ControllerWrapper``:
-        >>> # initialize a tf.keras model
-        >>> user_model = Unet()
-        >>> # wrap the model to transform it into a risk-aware variant
-        >>> model = ControllerWrapper(user_model, metrics=[VAEWrapper])
-        >>> # compile and fit as a regular tf.keras model
-        >>> model.compile(...)
-        >>> model.fit(...)
     """
 
-    def __init__(self, base_model, is_standalone=True, decoder=None):
+    def __init__(self, base_model, decoder=None):
         """
         Parameters
         ----------
         base_model : tf.keras.Model
             A model to be transformed into a risk-aware variant.
-        is_standalone : bool, default True
-            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         decoder : tf.keras.Model, default None
             To construct the VAE for any given model in capsa, we use the feature extractor as the encoder,
             and reverse the feature extractor automatically when possible to create a decoder.
@@ -91,18 +80,12 @@ class VAEWrapper(BaseWrapper):
         feature_extractor : tf.keras.Model
             Creates a ``feature_extractor`` by removing last layer from the ``base_model``.
         """
-        super(VAEWrapper, self).__init__(base_model, is_standalone)
+        super(VAEWrapper, self).__init__(base_model)
 
         self.metric_name = "vae"
         latent_dim = self.out_dim[-1]
         self.mean_layer = tf.keras.layers.Dense(latent_dim)
         self.log_std_layer = tf.keras.layers.Dense(latent_dim)
-
-        # unlike other wrappers, vae needs a feature_extractor
-        # regardless of is_standalone to create a decoder below
-        self.feature_extractor = tf.keras.Model(
-            base_model.inputs, base_model.layers[-2].output
-        )
 
         if decoder != None:
             self.decoder = decoder
@@ -138,7 +121,7 @@ class VAEWrapper(BaseWrapper):
         epsilon = tf.keras.backend.random_normal(shape=tf.shape(z_mean))
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
-    def loss_fn(self, x, _, features=None):
+    def loss_fn(self, x, _):
         """
         Calculates the VAE loss by sampling and then feeding the latent vector
         through the decoder.
@@ -147,9 +130,6 @@ class VAEWrapper(BaseWrapper):
         ----------
         x : tf.Tensor
             Input.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Returns
         -------
@@ -159,8 +139,7 @@ class VAEWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        if self.is_standalone:
-            features = self.feature_extractor(x, True)
+        features = self.feature_extractor(x, True)
 
         y_hat = self.out_layer(features)
         mu = self.mean_layer(features)
@@ -171,7 +150,7 @@ class VAEWrapper(BaseWrapper):
         loss = kl(mu, log_std) + mse(x, rec)
         return loss, y_hat
 
-    def call(self, x, training=False, return_risk=True, features=None, T=1):
+    def call(self, x, training=False, return_risk=True, T=1):
         """
         Forward pass of the model. The epistemic risk estimate could be calculated differently:
         by running either (1) deterministic or (2) stochastic forward pass.
@@ -184,9 +163,6 @@ class VAEWrapper(BaseWrapper):
             Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
         T : int, default 1
             Defines will the model be run deterministically or stochastically, and the number of times
             to sample from the latent space (if run stochastically).
@@ -197,8 +173,7 @@ class VAEWrapper(BaseWrapper):
             Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
             uncertainty estimate (tf.Tensor).
         """
-        if self.is_standalone:
-            features = self.feature_extractor(x, training)
+        features = self.feature_extractor(x, training)
         y_hat = self.out_layer(features)
 
         if not return_risk:
@@ -224,8 +199,7 @@ class VAEWrapper(BaseWrapper):
 
     def input_to_histogram(self, x, training=False, features=None):
         # needed to interface with the Histogram metric
-        if self.is_standalone:
-            features = self.feature_extractor(x, training)
+        features = self.feature_extractor(x, training)
         mu = self.mean_layer(features)
         return mu
 

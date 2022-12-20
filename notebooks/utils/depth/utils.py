@@ -17,16 +17,6 @@ from capsa import MVEWrapper, EnsembleWrapper, DropoutWrapper, VAEWrapper
 
 ################## data loading tools ##################
 
-# # hf = h5py.File("/home/iaroslavelistratov/results/nyu_train_2048.h5", "w")
-# # hf.create_dataset("x", data=x_train[:2048])
-# # hf.create_dataset("y", data=y_train[:2048])
-
-# train = h5py.File("/home/iaroslavelistratov/results/nyu_train_2048.h5", "r")
-# x, y = train["x"], train["y"]
-# print(x.shape)
-# print(y.shape)
-# print("loaded")
-
 
 def _load_depth_data(id_path):
     data = h5py.File(id_path, "r")
@@ -359,27 +349,6 @@ def gen_ood_comparison(
 
     if is_return:
         return iid, ood
-
-
-################## miscellaneous ##################
-
-
-def notebook_select_gpu(idx, quite=True):
-    # # https://www.tensorflow.org/guide/gpu#using_a_single_gpu_on_a_multi-gpu_system
-    # tf.config.set_soft_device_placement(True)
-    # tf.debugging.set_log_device_placement(True)
-
-    gpus = tf.config.list_physical_devices("GPU")
-    if gpus:
-        # Restrict TensorFlow to only use the first GPU
-        try:
-            tf.config.set_visible_devices(gpus[idx], "GPU")
-            logical_gpus = tf.config.list_logical_devices("GPU")
-            if not quite:
-                print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPU")
-        except RuntimeError as e:
-            # Visible devices must be set before GPUs have been initialized
-            print(e)
 
 
 def vis_depth_map(model, ds_test=None, ds_ood=None, plot_risk=True):

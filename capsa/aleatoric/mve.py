@@ -31,7 +31,7 @@ class MVEWrapper(BaseWrapper):
     sample from them using the reparametrization trick. We average stochastic samples and and
     backpropogate using cross entropy loss through those logits and their inferred uncertainties.
 
-    Example usage outside of the ``ControllerWrapper`` (standalone):
+    Example of usage:
         >>> # initialize a keras model
         >>> user_model = Unet()
         >>> # wrap the model to transform it into a risk-aware variant
@@ -39,25 +39,14 @@ class MVEWrapper(BaseWrapper):
         >>> # compile and fit as a regular keras model
         >>> model.compile(...)
         >>> model.fit(...)
-
-    Example usage inside of the ``ControllerWrapper``:
-        >>> # initialize a keras model
-        >>> user_model = Unet()
-        >>> # wrap the model to transform it into a risk-aware variant
-        >>> model = ControllerWrapper(user_model, metrics=[MVEWrapper])
-        >>> # compile and fit as a regular keras model
-        >>> model.compile(...)
-        >>> model.fit(...)
     """
 
-    def __init__(self, base_model, is_standalone=True, is_classification=False):
+    def __init__(self, base_model, is_classification=False):
         """
         Parameters
         ----------
         base_model : tf.keras.Model
             A model to be transformed into a risk-aware variant.
-        is_standalone : bool, default True
-            Indicates whether or not a metric wrapper will be used inside the ``ControllerWrapper``.
         is_classification : bool
             Indicates whether or not the model is a classification model. If ``True``, do mean
             variance estimation via the reparametrization trick.
@@ -73,14 +62,14 @@ class MVEWrapper(BaseWrapper):
         is_classification : bool
             Indicates whether model is a classification model.
         """
-        super(MVEWrapper, self).__init__(base_model, is_standalone)
+        super(MVEWrapper, self).__init__(base_model)
 
         self.metric_name = "mve"
         self.out_mu = copy_layer(self.out_layer, override_activation="linear")
         self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
         self.is_classification = is_classification
 
-    def loss_fn(self, x, y, features=None):
+    def loss_fn(self, x, y):
         """
         Parameters
         ----------
@@ -88,9 +77,6 @@ class MVEWrapper(BaseWrapper):
             Input.
         y : tf.Tensor
             Ground truth label.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``loss_fn`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Returns
         -------
@@ -100,9 +86,7 @@ class MVEWrapper(BaseWrapper):
         y_hat : tf.Tensor
             Predicted label.
         """
-        if self.is_standalone:
-            features = self.feature_extractor(x, True)
-
+        features = self.feature_extractor(x, True)
         y_hat = self.out_layer(features)
         mu = self.out_mu(features)
         logvar = self.out_logvar(features)
@@ -116,7 +100,7 @@ class MVEWrapper(BaseWrapper):
 
         return loss, y_hat
 
-    def call(self, x, training=False, return_risk=True, features=None):
+    def call(self, x, training=False, return_risk=True):
         """
         Forward pass of the model.
 
@@ -128,9 +112,6 @@ class MVEWrapper(BaseWrapper):
             Can be used to specify a different behavior in training and inference.
         return_risk : bool, default True
             Indicates whether or not to output a risk estimate in addition to the model's prediction.
-        features : tf.Tensor, default None
-            Extracted ``features`` will be passed to the ``call`` if the metric wrapper
-            is used inside the ``ControllerWrapper``, otherwise evaluates to ``None``.
 
         Returns
         -------
@@ -138,8 +119,7 @@ class MVEWrapper(BaseWrapper):
             Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the aleatoric
             uncertainty estimate (tf.Tensor).
         """
-        if self.is_standalone:
-            features = self.feature_extractor(x, training)
+        features = self.feature_extractor(x, training)
         y_hat = self.out_layer(features)
 
         if not return_risk:
