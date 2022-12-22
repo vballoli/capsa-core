@@ -1,54 +1,68 @@
+import unittest
 import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 
-from capsa import EnsembleWrapper, MVEWrapper, VAEWrapper
-from capsa.utils import (
-    get_user_model,
-    plot_loss,
-    get_preds_names,
-    plot_risk_2d,
-    plot_epistemic_2d,
-)
-from data import get_data_v1, get_data_v2
+from tensorflow import keras
+from sklearn.model_selection import train_test_split
+from sklearn import datasets
+import tensorflow_probability as tfp
+
+from capsa import EnsembleWrapper
 
 
-def test_ensemble(use_case):
+def generate_moon_data_classification(noise=True):
+    x, y = datasets.make_moons(n_samples=60000, noise=0.1)
 
-    user_model = get_user_model()
-    ds_train, ds_val, x, y, x_val, y_val = get_data_v2(batch_size=256, is_show=False)
+    if noise:
+        dstr = tfp.distributions.MultivariateNormalDiag(loc=[-0.7, 0.7], scale_diag=[0.03,0.05])
+        p_flip = dstr.prob(x)
+        result = tf.math.top_k(p_flip,k=5000,sorted=True)
+        indices_to_flip = result.indices[0::5]
+        print(x[result.indices[0:20]])
+        
+        y[indices_to_flip] = 1 - y[indices_to_flip]
 
-    if use_case == 1:
+    x = x.astype(float)
+    y = y.astype(float)
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.30)
+    return (x_train, y_train), (x_test, y_test)
 
-        model = EnsembleWrapper(user_model, num_members=3)
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
-            loss=tf.keras.losses.MeanSquaredError(),
-            # optionally, metrics could also be specified
-            metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
+
+
+class test_ensemble(unittest.TestCase):
+
+    def test_points(self):
+        
+        (x_train, y_train), (x_test, y_test) = generate_moon_data_classification()
+
+        max_points = np.load("data/ensemble_max_points.npy")
+        min_points = np.load("data/ensemble_min_points.npy")
+
+
+        model = tf.keras.Sequential(
+        [
+            tf.keras.Input(shape=(None,2)),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(8, "relu"),
+            tf.keras.layers.Dense(1,"sigmoid"),
+        ]
         )
 
-        history = model.fit(x, y, epochs=30, validation_data=(x_val, y_val))
-        plot_loss(history)
+        wrapped_model = EnsembleWrapper(model,num_members=5)
 
-        risk_tensor = model(x_val)
-        plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
-
-    elif use_case == 2:
-
-        model = EnsembleWrapper(user_model, metric_wrapper=MVEWrapper, num_members=5)
-
-        model.compile(
+        wrapped_model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
-            loss=tf.keras.losses.MeanSquaredError(),
+            loss=tf.keras.losses.BinaryCrossentropy(),
+            metrics=[tf.keras.metrics.BinaryAccuracy()],
         )
 
-        history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
-        plot_loss(history)
-
-        risk_tensor = model(x_val)
-        plot_risk_2d(x_val, y_val, risk_tensor, model.metric_name)
+        wrapped_model.fit(x_train, y_train, epochs=2)
 
 
-test_ensemble(1)
-test_ensemble(2)
+        max_results = wrapped_model(max_points).epistemic
+        min_results = wrapped_model(min_points).epistemic
+
+        self.assertGreater(tf.reduce_mean(max_results),tf.reduce_mean(min_results))
+
