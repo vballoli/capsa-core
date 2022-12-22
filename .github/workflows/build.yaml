@@ -57,4 +57,6 @@ jobs:
       - name: Test it
         run: |
           cd ./test
-          python -m unittest unit_test.py -b
+          python -m unittest test_generic.py -b
+          python -m unittest test_ensemble.py -b
+          python -m unittest test_mve.py -b
