@@ -1,0 +1,32 @@
+name: build_all_workflow
+
+# build for all python versions
+on:
+  workflow_dispatch:
+  workflow_call:
+  push:
+    branches: [ '**' ]
+  pull_request:
+    branches: [ '**' ]
+
+jobs:
+
+  build_job_py37:
+    uses: ./.github/workflows/build.yaml
+    with:
+      py_version: '3.7'
+
+  build_job_py38:
+    uses: ./.github/workflows/build.yaml
+    with:
+      py_version: '3.8'
+
+  build_job_py39:
+    uses: ./.github/workflows/build.yaml
+    with:
+      py_version: '3.9'
+
+  build_job_py310:
+    uses: ./.github/workflows/build.yaml
+    with:
+      py_version: '3.10'
