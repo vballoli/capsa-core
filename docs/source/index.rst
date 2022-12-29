@@ -6,9 +6,15 @@
 Capsa Documentation
 ===================
 
-.. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/GitHub_Logo.png/800px-GitHub_Logo.png
+.. image:: assets/github-light.png
    :width: 55
    :target: https://github.com/themis-ai/capsa
+   :class: only-light
+
+.. image:: assets/github-dark.png
+   :width: 55
+   :target: https://github.com/themis-ai/capsa
+   :class: only-dark
 
 .. image:: https://img.shields.io/pypi/pyversions/capsa
 
