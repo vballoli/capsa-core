@@ -62,11 +62,12 @@ jobs:
           python -m unittest test_mve.py -b
 
       - name: Dockerize
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v3
         with:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
           registry: docker.pkg.github.com
           repository: ${{ github.actor }}/capsa
           tag_with_sha: true
-          build-args: PY_VERSION='${{ inputs.py_version }}'
+          build-args: |
+            "PY_VERSION=${{ inputs.py_version }}"
