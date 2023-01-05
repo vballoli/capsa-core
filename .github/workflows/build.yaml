@@ -64,10 +64,6 @@ jobs:
       - name: Dockerize
         uses: docker/build-push-action@v3
         with:
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          registry: docker.pkg.github.com
-          repository: ${{ github.actor }}/capsa
-          tag_with_sha: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           build-args: |
             "PY_VERSION=${{ inputs.py_version }}"

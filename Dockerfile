@@ -3,6 +3,9 @@
 
 FROM ubuntu:latest
 
+ARG PY_VERSION
+ENV PY_VERSION ${PY_VERSION}
+
 WORKDIR /app
 
 RUN apt-get -y update
