@@ -69,5 +69,4 @@ jobs:
           registry: docker.pkg.github.com
           repository: ${{ github.actor }}/capsa
           tag_with_sha: true
-        env:
-          PY_VERSION: '${{ inputs.py_version }}'
+          build-args: PY_VERSION='${{ inputs.py_version }}'
