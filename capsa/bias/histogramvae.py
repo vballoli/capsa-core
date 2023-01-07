@@ -15,7 +15,6 @@ def kl(mu, log_std):
         axis=-1,
     )
 
-
 def mse(y, y_hat, reduce=True):
     ax = list(range(1, len(y.shape)))
     mse = tf.reduce_sum(
@@ -27,9 +26,21 @@ def mse(y, y_hat, reduce=True):
 
 class HistogramVAEWrapper(BaseWrapper):
     """
+    Combines the functionalities of both HistogramWrapper and VAEWrapper. This is done by converting a given base_model into Variational AutoEncoder architecture, with latent dimension defined by the given parameter ``latent_dim``.
+
+    VAEs are typically used to learn a robust, low-dimensional representation
+    of the latent space. They can be used as a method of estimating epistemic
+    uncertainty by using the reconstruction loss MSE(x, x_hat) - in cases of
+    out-of-distribution data, samples that are hard to learn, or underrepresented
+    samples, we expect that the VAE will have high reconstruction loss, since the
+    mapping to the latent space will be less accurate. Conversely, when the model
+    is very familiar with the features being fed in, or the data is in distribution,
+    we expect the latent space mapping to be robust and the reconstruction loss to be low.
+
+    A histogram distribution is constructed from the mean layer of the VAE architecture. This histogram is used to estimate a    
     """
 
-    def __init__(self, base_model, decoder=None,latent_dim):
+    def __init__(self, base_model, latent_dim,queue_size,num_bins,decoder=None):
         """
         Parameters
         ----------
@@ -38,6 +49,12 @@ class HistogramVAEWrapper(BaseWrapper):
         decoder : tf.keras.Model, default None
             To construct the VAE for any given model in capsa, we use the feature extractor as the encoder,
             and reverse the feature extractor automatically when possible to create a decoder.
+        latent_dim : int
+            Defines the dimension of latent-space. Making this very small can cause the bottleneck to lose too much information, resulting in high reconstruction loss. On the contrary, making it too big can cause the passing information to not become compressed enough, resulting in less-meaningful latent features.
+        queue_size : int
+            The size of the internal queue data-structure to use for the histogram
+        num_bins : int
+            How many bins to use in the histogram
 
         Attributes
         ----------
@@ -50,17 +67,20 @@ class HistogramVAEWrapper(BaseWrapper):
         feature_extractor : tf.keras.Model
             Creates a ``feature_extractor`` by removing last layer from the ``base_model``.
         """
-        super(VAEWrapper, self).__init__(None)
+        super(HistogramVAEWrapper, self).__init__(base_model)
 
         self.metric_name = "vae"
         self.mean_layer = tf.keras.layers.Dense(latent_dim)
         self.log_std_layer = tf.keras.layers.Dense(latent_dim)
+        self.queue_built = False
+        self.queue_size = queue_size
+        self.num_bins = num_bins
 
         if decoder != None:
             self.decoder = decoder
         # reverse model if we can, accept user decoder if we cannot
         elif hasattr(self.feature_extractor, "layers"):
-            self.decoder = reverse_model(self.feature_extractor, latent_dim)
+            self.decoder = self.reverse_model(self.feature_extractor, latent_dim)
         else:
             raise ValueError(
                 "If you provide a subclassed model, \
@@ -98,6 +118,13 @@ class HistogramVAEWrapper(BaseWrapper):
         else:
             mu = self.mean_layer(features)
             log_std = self.log_std_layer(features)
+
+            #Keras Model.build doesn't work due to train_step calling loss_fn instead of the model, we need to find a solution to that in the future to remove the horrible next 3 lines of code
+            if self.queue_built == False:
+
+                self.build_queue(mu)
+                self.queue_built = True
+
             bias = self.get_histogram_probability(mu)
 
             # deterministic
@@ -114,6 +141,7 @@ class HistogramVAEWrapper(BaseWrapper):
                     recs.append(self.decoder(sampled_latent))
                 std = tf.reduce_std(recs)
                 return y_hat,std,bias
+
 
 
     def loss_fn(self, x, _):
@@ -140,6 +168,12 @@ class HistogramVAEWrapper(BaseWrapper):
         mu = self.mean_layer(features)
         log_std = self.log_std_layer(features)
 
+
+        #Keras Model.build doesn't work due to train_step calling loss_fn instead of the model, we need to find a solution to that in the future to remove the horrible next 3 lines of code
+        if self.queue_built == False:    
+            self.build_queue(mu)
+            self.queue_built = True
+
         self.add_queue(mu)
         bias = self.get_histogram_probability(mu)
 
@@ -148,6 +182,8 @@ class HistogramVAEWrapper(BaseWrapper):
         loss = kl(mu, log_std) + mse(x, rec)
         return loss, y_hat, bias
     
+
+
     def train_step(self, data, prefix=None):
         """
         The logic for one training step.
@@ -198,6 +234,7 @@ class HistogramVAEWrapper(BaseWrapper):
         keras_metrics[f"{prefix}_wrapper_loss"] = loss
 
 
+        #Possible area to add DB-VAE additions: the variable ``bias`` is available in this scope
 
 
         return keras_metrics
@@ -228,15 +265,26 @@ class HistogramVAEWrapper(BaseWrapper):
         return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
 
-    def build(self,input_shape):
+    # Defining a Tensor Queue that saves the last ``queue_size`` values
+    def build_queue(self, features):
         # Get the shape of the features
-        feature_shape = self.mean_layer.output_shape
+        feature_shape = tf.shape(features)
 
         # Create a queue with the shape of the features and an index to keep track of how many values are in the queue
         self.queue = tf.Variable(
             tf.zeros([self.queue_size, feature_shape[-1]]), trainable=False
         )
         self.queue_index = tf.Variable(0, trainable=False)
+        
+    # def build(self,input_shape):
+    #     # Get the shape of the features
+    #     feature_shape = self.mean_layer.output_shape
+
+    #     # Create a queue with the shape of the features and an index to keep track of how many values are in the queue
+    #     self.queue = tf.Variable(
+    #         tf.zeros([self.queue_size, feature_shape[-1]]), trainable=False
+    #     )
+    #     self.queue_index = tf.Variable(0, trainable=False)
 
 
     def get_histogram_probability(self, features):
@@ -335,23 +383,23 @@ class HistogramVAEWrapper(BaseWrapper):
 
         return edges
 
-    def reverse_model(model, latent_dim):
-    inputs = tf.keras.Input(shape=latent_dim)
-    i = len(model.layers) - 1
-    while type(model.layers[i]) != layers.InputLayer and i >= 0:
-        if i == len(model.layers) - 1:
-            x = reverse_layer(model.layers[i])(inputs)
-        else:
-            if type(model.layers[i - 1]) == layers.InputLayer:
-                original_input = model.layers[i - 1].input_shape
-                x = reverse_layer(model.layers[i], original_input)(x)
+    def reverse_model(self,model, latent_dim):
+        inputs = tf.keras.Input(shape=latent_dim)
+        i = len(model.layers) - 1
+        while type(model.layers[i]) != layers.InputLayer and i >= 0:
+            if i == len(model.layers) - 1:
+                x = self.reverse_layer(model.layers[i])(inputs)
             else:
-                x = reverse_layer(model.layers[i])(x)
-        i -= 1
-    return tf.keras.Model(inputs, x)
+                if type(model.layers[i - 1]) == layers.InputLayer:
+                    original_input = model.layers[i - 1].input_shape
+                    x = self.reverse_layer(model.layers[i], original_input)(x)
+                else:
+                    x = self.reverse_layer(model.layers[i])(x)
+            i -= 1
+        return tf.keras.Model(inputs, x)
 
 
-    def reverse_layer(layer, output_shape=None):
+    def reverse_layer(self,layer, output_shape=None):
         config = layer.get_config()
         layer_type = type(layer)
         unchanged_layers = [layers.Activation, layers.BatchNormalization, layers.Dropout]

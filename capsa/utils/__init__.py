@@ -13,4 +13,3 @@ from .utils import (
 
 )
 
-from .histogramvae import HistogramVAEWrapper
