@@ -5,3 +5,4 @@ from .risk_tensor import RiskTensor
 from .bias import HistogramWrapper
 from .aleatoric import MVEWrapper
 from .epistemic import DropoutWrapper, EnsembleWrapper, VAEWrapper
+from .utils import HistogramVAEWrapper

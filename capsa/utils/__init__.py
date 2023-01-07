@@ -10,4 +10,7 @@ from .utils import (
     plot_risk_2d,
     gen_calibration_plot,
     unpack_risk_tensor,
+
 )
+
+from .histogramvae import HistogramVAEWrapper
