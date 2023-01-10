@@ -117,7 +117,8 @@ class EnsembleWrapper(BaseWrapper):
             )
             m.compile(optimizer[i], loss[i], metrics[i])
             self.metrics_compiled[m_name] = m
-
+    
+    @tf.function
     def train_step(self, data):
         """
         The logic for one training step.
