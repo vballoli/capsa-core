@@ -183,7 +183,7 @@ class HistogramVAEWrapper(BaseWrapper):
         return loss, y_hat, bias
     
 
-
+    @tf.function
     def train_step(self, data, prefix=None):
         """
         The logic for one training step.
