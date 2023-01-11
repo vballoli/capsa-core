@@ -21,7 +21,7 @@ RUN python -m pip install --upgrade pip
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
-COPY . .
-RUN pip install dist/capsa*
+COPY dist/capsa* .
+RUN pip install capsa*
 
 COPY test test
