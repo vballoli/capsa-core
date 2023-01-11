@@ -16,7 +16,6 @@ RUN apt-get install -y python${PY_VERSION}
 RUN ln -s /usr/bin/python${PY_VERSION} /usr/bin/python
 RUN apt-get install -y python3-pip
 RUN apt-get install -y python${PY_VERSION}-distutils
-RUN apt-get install -y python${PY_VERSION}-apt
 RUN python -m pip install --upgrade pip
 
 COPY requirements.txt requirements.txt
