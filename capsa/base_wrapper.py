@@ -57,7 +57,8 @@ class BaseWrapper(tf.keras.Model):
             last_layer = base_model.layers[-1]
             self.out_layer = copy_layer(last_layer)
             self.out_dim = _get_out_dim(base_model)
-
+    
+    @tf.function
     def train_step(self, data, prefix=None):
         """
         The logic for one training step.
@@ -108,7 +109,8 @@ class BaseWrapper(tf.keras.Model):
         keras_metrics[f"{prefix}_wrapper_loss"] = loss
 
         return keras_metrics
-
+    
+    @tf.function
     def test_step(self, data, prefix=None):
         """
         The logic for one evaluation step.
