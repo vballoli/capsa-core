@@ -22,7 +22,9 @@ COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
 
 COPY . .
-RUN ls -alh
+RUN python setup.py clean --all sdist
+RUN pip install dist/capsa*
 
-COPY test test
-RUN ls -alh
+RUN cd ./test
+RUN python -m unittest test_ensemble.py -b
+RUN python -m unittest test_mve.py -b
