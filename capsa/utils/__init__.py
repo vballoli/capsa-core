@@ -10,6 +10,6 @@ from .utils import (
     plot_risk_2d,
     gen_calibration_plot,
     unpack_risk_tensor,
-
+    generate_moon_data_classification
 )
 

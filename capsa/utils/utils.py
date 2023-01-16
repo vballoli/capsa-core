@@ -164,3 +164,55 @@ def unpack_risk_tensor(t, model_name):
     else:
         risk = t.epistemic
     return risk
+
+
+def make_moons(n_samples=100, noise=None):
+    """
+    Generate two interleaving half circles
+    """
+
+    n_samples_out = n_samples // 2
+    n_samples_in = n_samples - n_samples_out
+
+
+    outer_circ_x = np.cos(np.linspace(0, np.pi, n_samples_out))
+    outer_circ_y = np.sin(np.linspace(0, np.pi, n_samples_out))
+    inner_circ_x = 1 - np.cos(np.linspace(0, np.pi, n_samples_in))
+    inner_circ_y = 1 - np.sin(np.linspace(0, np.pi, n_samples_in)) - 0.5
+
+    X = np.vstack(
+        [np.append(outer_circ_x, inner_circ_x), np.append(outer_circ_y, inner_circ_y)]
+    ).T
+    y = np.hstack(
+        [np.zeros(n_samples_out, dtype=np.intp), np.ones(n_samples_in, dtype=np.intp)]
+    )
+
+    if noise is not None:
+        X += np.random.normal(scale=noise, size=X.shape)
+
+    x = tf.convert_to_tensor(X,dtype=tf.float32)
+    y = tf.convert_to_tensor(y,dtype=tf.float32)
+
+    indices = tf.range(start=0, limit=tf.shape(x)[0], dtype=tf.int32)
+    shuffled_indices = tf.random.shuffle(indices)
+
+    shuffled_x = tf.gather(x, shuffled_indices).numpy()
+    shuffled_y = tf.gather(y, shuffled_indices).numpy()
+
+    return shuffled_x, shuffled_y
+
+def generate_moon_data_classification(noise=True):
+
+    x, y = make_moons(n_samples=60000, noise=0.1)
+
+    if noise:
+        dstr = tfp.distributions.MultivariateNormalDiag(loc=[-0.7, 0.7], scale_diag=[0.03,0.05])
+        p_flip = dstr.prob(x)
+        result = tf.math.top_k(p_flip,k=5000,sorted=True)
+        indices_to_flip = result.indices[0::5]
+        
+        y[indices_to_flip] = 1 - y[indices_to_flip]
+
+    x = x.astype(float)
+    y = y.astype(float)
+    return (x, y)
