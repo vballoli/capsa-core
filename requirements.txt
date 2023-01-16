@@ -8,4 +8,3 @@ sphinx-tabs
 furo
 pandoc
 nbsphinx
-scikit-learn

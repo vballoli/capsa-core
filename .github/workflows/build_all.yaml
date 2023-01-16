@@ -11,6 +11,11 @@ on:
 
 jobs:
 
+  build_job_py37:
+    uses: ./.github/workflows/build.yaml
+    with:
+      py_version: '3.7'
+
   build_job_py38:
     uses: ./.github/workflows/build.yaml
     with:
