@@ -17,10 +17,10 @@ We can also treat our use a custom training loop to train the Metric Wrapper usi
 
 Representation Bias
 *******************
-.. image:: bias-light.PNG
+.. image:: bias-light.png
     :class: only-light
 
-.. image:: bias-dark.PNG
+.. image:: bias-dark.png
     :class: only-dark
 
 **Bias** of a dataset uncovers the imbalance in the feature space and captures whether certain combinations of features are more frequent than others. 
@@ -57,10 +57,10 @@ This risk metric captures noise in the data: mislabeled datapoints, ambiguous la
 
 For example, lets take a look at the Fashion-MNIST dataset, which containts two very similar classes: "tshirt" and "shirt". The following image shows the confusion matrix for a model trained on this dataset. As we can see, the model is very confused between these two classes. 
 
-.. image:: confusion-light.PNG
+.. image:: confusion-light.png
     :class: only-light
 
-.. image:: confusion-dark.PNG
+.. image:: confusion-dark.png
     :class: only-dark
 
 Now, let's inspect the samples that the model misclassifies. We can see that the average aleatoric uncertainty is higher among samples that are misclassified compared to samples that are correctly classified. Even we as humans have problems classifying samples with high uncertainty. Here are some examples:

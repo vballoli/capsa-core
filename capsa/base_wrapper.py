@@ -48,15 +48,17 @@ class BaseWrapper(tf.keras.Model):
         """
         super(BaseWrapper, self).__init__()
 
-        self.base_model = base_model
-        self.feature_extractor = tf.keras.Model(
-            base_model.inputs, base_model.layers[-2].output
-        )
+        if base_model is not None:
+            self.base_model = base_model
+            self.feature_extractor = tf.keras.Model(
+                base_model.inputs, base_model.layers[-2].output
+            )
 
-        last_layer = base_model.layers[-1]
-        self.out_layer = copy_layer(last_layer)
-        self.out_dim = _get_out_dim(base_model)
-
+            last_layer = base_model.layers[-1]
+            self.out_layer = copy_layer(last_layer)
+            self.out_dim = _get_out_dim(base_model)
+    
+    @tf.function
     def train_step(self, data, prefix=None):
         """
         The logic for one training step.
@@ -107,7 +109,8 @@ class BaseWrapper(tf.keras.Model):
         keras_metrics[f"{prefix}_wrapper_loss"] = loss
 
         return keras_metrics
-
+    
+    @tf.function
     def test_step(self, data, prefix=None):
         """
         The logic for one evaluation step.
