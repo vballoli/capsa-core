@@ -1,6 +1,6 @@
 numpy
 matplotlib
-tensorflow-gpu
+tensorflow
 tensorflow-probability
 sphinx
 sphinx_rtd_theme
