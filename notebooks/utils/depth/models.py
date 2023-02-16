@@ -9,7 +9,7 @@ from tensorflow.keras.layers import (
     SpatialDropout2D,
 )
 import functools
-from tensorflow.keras.utils.layer_utils import count_params
+from tensorflow.python.keras.utils.layer_utils import count_params
 
 import config
 
