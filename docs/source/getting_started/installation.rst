@@ -16,14 +16,6 @@ There are several different ways to install capsa into your workspace.
 
          pip install capsa
 
-   .. tab:: conda
-
-    Install capsa with conda.
-
-      .. code-block:: bash
-
-         conda install -c themisai capsa
-
    .. tab:: source
 
     Install capsa from Github.
