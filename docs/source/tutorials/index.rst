@@ -9,6 +9,7 @@ Would you prefer following a tutorial? We have a few available that focuses on d
 .. toctree::
     :maxdepth: 1
 
+    Unified Tutorial (Classification) <notebooks/0_Unified-Tutorial.ipynb>
     Ensemble Wrapper (Classification) <notebooks/1_Ensemble-Classification.ipynb>
     Histogram Wrapper (Classification)  <notebooks/2_Histogram-Classification.ipynb>
     MVE Wrapper (Classification) <notebooks/3_MVE-Classification.ipynb>
