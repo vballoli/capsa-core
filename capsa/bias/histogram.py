@@ -4,6 +4,8 @@ import tensorflow_probability as tfp
 
 from ..base_wrapper import BaseWrapper
 from ..utils import copy_layer
+from ..risk_tensor import RiskTensor
+
 
 
 class HistogramWrapper(BaseWrapper):
@@ -123,7 +125,11 @@ class HistogramWrapper(BaseWrapper):
 
         predictor_y = self.output_layer(features)
 
-        return predictor_y, bias
+        if training:
+            return predictor_y, bias
+        else:
+            bias = tf.repeat(input=tf.expand_dims(bias,axis=-1),repeats=predictor_y.shape[-1],axis=-1)
+            return RiskTensor(predictor_y, bias=bias)
 
     def get_histogram_probability(self, features):
         """

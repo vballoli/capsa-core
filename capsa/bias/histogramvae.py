@@ -6,6 +6,7 @@ from tensorflow.keras import layers
 from ..utils import copy_layer, _get_out_dim
 from ..base_wrapper import BaseWrapper
 import tensorflow_probability as tfp
+from ..risk_tensor import RiskTensor
 
 
 
@@ -22,7 +23,7 @@ def mse(y, y_hat, reduce=True):
         axis=ax,
         keepdims=(False if reduce else True),
     )
-    return tf.reduce_mean(mse) if reduce else mse
+    return tf.expand_dims(mse,axis=-1) if reduce else mse
 
 class HistogramVAEWrapper(BaseWrapper):
     """
@@ -40,7 +41,7 @@ class HistogramVAEWrapper(BaseWrapper):
     A histogram distribution is constructed from the mean layer of the VAE architecture. This histogram is used to estimate a    
     """
 
-    def __init__(self, base_model, latent_dim,queue_size,num_bins,decoder=None):
+    def __init__(self, base_model, latent_dim,queue_size,num_bins=5,decoder=None):
         """
         Parameters
         ----------
@@ -130,8 +131,14 @@ class HistogramVAEWrapper(BaseWrapper):
             # deterministic
             if T == 1:
                 rec = self.decoder(mu, training)
-                epistemic = mse(x, rec, reduce=False)
-                return y_hat,epistemic,bias
+                epistemic = mse(x, rec, reduce=True)
+
+                epistemic = tf.repeat(input=epistemic,repeats=y_hat.shape[-1],axis=-1)
+                bias = tf.repeat(input=tf.expand_dims(bias,axis=-1),repeats=y_hat.shape[-1],axis=-1)
+                if training:
+                    return y_hat, epistemic, bias
+                else:
+                    return RiskTensor(y_hat,epistemic=epistemic,bias=bias)
 
             # stochastic
             else:
@@ -183,7 +190,7 @@ class HistogramVAEWrapper(BaseWrapper):
         return loss, y_hat, bias
     
 
-    @tf.function
+    #@tf.function
     def train_step(self, data, prefix=None):
         """
         The logic for one training step.
