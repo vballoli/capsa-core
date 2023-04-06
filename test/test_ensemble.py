@@ -45,4 +45,5 @@ class test_ensemble(unittest.TestCase):
         self.assertGreater(tf.reduce_mean(max_results),tf.reduce_mean(min_results))
 
 
-
+if __name__ == "__main__":
+    unittest.main()
