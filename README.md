@@ -98,3 +98,7 @@ Checkout our <a href="https://themisai.io/capsa/tutorials">tutorials</a> on some
 Capsa is being actively maintained and advanced. It has been built with research, extensibility, and community development as a priority. We greatly appreciate contributions to the capsa repository and codebase, including issues, enhancements, and pull requests.
 
 For more details please see <a href="https://themisai.io/capsa/contribute/">here</a>.
+
+# 💡 Support
+
+Capsa currently supports Keras Sequential models, although we are looking at possible solutions for supporting wider range of models. We can't wait to share you some new details soon! 
