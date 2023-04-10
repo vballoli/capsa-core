@@ -17,6 +17,7 @@
 - <a href="https://themisai.io/capsa/">[📄 Docs]</a>
 - <a href="https://www.themisai.io">[🌐 Website]</a>
 - <a href="https://themisai.io/company.html">[🧠 We're Hiring!]</a>
+- <a href="https://themisai.io/capsa/tutorials/index.html">[💡 Tutorials!]</a>
 </p></h4>
 
 <p align="center">
