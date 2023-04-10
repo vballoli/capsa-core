@@ -7,7 +7,7 @@ on:
       os:
         description: 'Operating system'
         required: false
-        default: 'ubuntu-18.04'
+        default: 'ubuntu-20.04'
       py_version:
         description: 'Python version'
         required: true
@@ -19,7 +19,7 @@ on:
         description: 'Operating system'
         required: false
         type: string
-        default: 'ubuntu-18.04'
+        default: 'ubuntu-20.04'
       py_version:
         description: 'Python version'
         required: true
