@@ -294,7 +294,8 @@ class HistogramVAEWrapper(BaseWrapper):
     #     self.queue_index = tf.Variable(0, trainable=False)
 
 
-    def get_histogram_probability(self, features):
+    def get_histogram_probability(self,features):
+
         """
         Get the probability of each feature in the histogram. This utilizes the internal queue data-structure to calculate the probability.
 
@@ -308,6 +309,8 @@ class HistogramVAEWrapper(BaseWrapper):
         logits : tf.Tensor
             Calculated probabilities for each feature.
         """
+        
+        # DON'T NEED TO CALCULATE EVERY TIME!---------------------
 
         edges = self.get_histogram_edges()
 
@@ -319,8 +322,12 @@ class HistogramVAEWrapper(BaseWrapper):
             extend_upper_interval=True,
         )
 
+        epsilon = 1e-8
+
         # Normalize histograms
-        hist_probs = tf.divide(frequencies, tf.reduce_sum(frequencies, axis=0))
+        hist_probs = tf.divide(frequencies, tf.reduce_sum(frequencies, axis=0)) + epsilon
+
+        # DON'T NEED TO CALCULATE EVERY TIME!---------------------
 
         # Get the corresponding bins of the features
         bin_indices = tf.cast(
@@ -340,11 +347,16 @@ class HistogramVAEWrapper(BaseWrapper):
         indices = tf.stack([bin_indices, second_element], axis=2)
 
         probabilities = tf.gather_nd(hist_probs, indices)
+
         logits = tf.reduce_sum(tf.math.log(probabilities), axis=1)
-        logits = logits - tf.math.reduce_mean(
-            logits
-        )  # log probabilities are the wrong sign if we don't subtract the mean
-        return tf.math.softmax(logits)
+
+        # logits = logits - tf.math.reduce_mean(
+        #     logits
+        # )  # log probabilities are the wrong sign if we don't subtract the mean
+
+        #return tf.math.softmax(logits)
+        
+        return tf.math.exp(logits)
 
 
     def add_queue(self, features):
