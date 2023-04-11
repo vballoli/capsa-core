@@ -6,6 +6,7 @@ from tensorflow.keras import layers
 from ..utils import copy_layer, _get_out_dim
 from ..base_wrapper import BaseWrapper
 import tensorflow_probability as tfp
+from ..risk_tensor import RiskTensor
 
 
 
@@ -22,7 +23,7 @@ def mse(y, y_hat, reduce=True):
         axis=ax,
         keepdims=(False if reduce else True),
     )
-    return tf.reduce_mean(mse) if reduce else mse
+    return tf.expand_dims(mse,axis=-1) if reduce else mse
 
 class HistogramVAEWrapper(BaseWrapper):
     """
@@ -40,7 +41,7 @@ class HistogramVAEWrapper(BaseWrapper):
     A histogram distribution is constructed from the mean layer of the VAE architecture. This histogram is used to estimate a    
     """
 
-    def __init__(self, base_model, latent_dim,queue_size,num_bins,decoder=None):
+    def __init__(self, base_model, latent_dim,queue_size,num_bins=5,decoder=None):
         """
         Parameters
         ----------
@@ -130,8 +131,14 @@ class HistogramVAEWrapper(BaseWrapper):
             # deterministic
             if T == 1:
                 rec = self.decoder(mu, training)
-                epistemic = mse(x, rec, reduce=False)
-                return y_hat,epistemic,bias
+                epistemic = mse(x, rec, reduce=True)
+
+                epistemic = tf.repeat(input=epistemic,repeats=y_hat.shape[-1],axis=-1)
+                bias = tf.repeat(input=tf.expand_dims(bias,axis=-1),repeats=y_hat.shape[-1],axis=-1)
+                if training:
+                    return y_hat, epistemic, bias
+                else:
+                    return RiskTensor(y_hat,epistemic=epistemic,bias=bias)
 
             # stochastic
             else:
@@ -183,7 +190,7 @@ class HistogramVAEWrapper(BaseWrapper):
         return loss, y_hat, bias
     
 
-    @tf.function
+    #@tf.function
     def train_step(self, data, prefix=None):
         """
         The logic for one training step.
@@ -287,7 +294,8 @@ class HistogramVAEWrapper(BaseWrapper):
     #     self.queue_index = tf.Variable(0, trainable=False)
 
 
-    def get_histogram_probability(self, features):
+    def get_histogram_probability(self,features):
+
         """
         Get the probability of each feature in the histogram. This utilizes the internal queue data-structure to calculate the probability.
 
@@ -301,6 +309,8 @@ class HistogramVAEWrapper(BaseWrapper):
         logits : tf.Tensor
             Calculated probabilities for each feature.
         """
+        
+        # DON'T NEED TO CALCULATE EVERY TIME!---------------------
 
         edges = self.get_histogram_edges()
 
@@ -312,8 +322,12 @@ class HistogramVAEWrapper(BaseWrapper):
             extend_upper_interval=True,
         )
 
+        epsilon = 1e-8
+
         # Normalize histograms
-        hist_probs = tf.divide(frequencies, tf.reduce_sum(frequencies, axis=0))
+        hist_probs = tf.divide(frequencies, tf.reduce_sum(frequencies, axis=0)) + epsilon
+
+        # DON'T NEED TO CALCULATE EVERY TIME!---------------------
 
         # Get the corresponding bins of the features
         bin_indices = tf.cast(
@@ -333,11 +347,16 @@ class HistogramVAEWrapper(BaseWrapper):
         indices = tf.stack([bin_indices, second_element], axis=2)
 
         probabilities = tf.gather_nd(hist_probs, indices)
+
         logits = tf.reduce_sum(tf.math.log(probabilities), axis=1)
-        logits = logits - tf.math.reduce_mean(
-            logits
-        )  # log probabilities are the wrong sign if we don't subtract the mean
-        return tf.math.softmax(logits)
+
+        # logits = logits - tf.math.reduce_mean(
+        #     logits
+        # )  # log probabilities are the wrong sign if we don't subtract the mean
+
+        #return tf.math.softmax(logits)
+        
+        return tf.math.exp(logits)
 
 
     def add_queue(self, features):

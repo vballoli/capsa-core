@@ -186,6 +186,7 @@ class VAEWrapper(BaseWrapper):
             if T == 1:
                 rec = self.decoder(mu, training)
                 epistemic = mse(x, rec, reduce=False)
+                epistemic = tf.repeat(input=epistemic,repeats=y_hat.shape[-1],axis=-1)
                 return RiskTensor(y_hat, epistemic=epistemic)
 
             # stochastic
@@ -195,6 +196,7 @@ class VAEWrapper(BaseWrapper):
                     sampled_latent = self.sampling(mu, log_std)
                     recs.append(self.decoder(sampled_latent))
                 std = tf.reduce_std(recs)
+                std = tf.repeat(input=std,repeats=y_hat.shape[-1],axis=-1)
                 return RiskTensor(y_hat, epistemic=std)
 
     def input_to_histogram(self, x, training=False, features=None):

@@ -4,6 +4,8 @@ import tensorflow_probability as tfp
 
 from ..base_wrapper import BaseWrapper
 from ..utils import copy_layer
+from ..risk_tensor import RiskTensor
+
 
 
 class HistogramWrapper(BaseWrapper):
@@ -123,9 +125,14 @@ class HistogramWrapper(BaseWrapper):
 
         predictor_y = self.output_layer(features)
 
-        return predictor_y, bias
+        if training:
+            return predictor_y, bias
+        else:
+            bias = tf.repeat(input=tf.expand_dims(bias,axis=-1),repeats=predictor_y.shape[-1],axis=-1)
+            return RiskTensor(predictor_y, bias=bias)
 
-    def get_histogram_probability(self, features):
+    def get_histogram_probability(self,features):
+
         """
         Get the probability of each feature in the histogram. This utilizes the internal queue data-structure to calculate the probability.
 
@@ -139,6 +146,8 @@ class HistogramWrapper(BaseWrapper):
         logits : tf.Tensor
             Calculated probabilities for each feature.
         """
+        
+        # DON'T NEED TO CALCULATE EVERY TIME!---------------------
 
         edges = self.get_histogram_edges()
 
@@ -150,8 +159,12 @@ class HistogramWrapper(BaseWrapper):
             extend_upper_interval=True,
         )
 
+        epsilon = 1e-8
+
         # Normalize histograms
-        hist_probs = tf.divide(frequencies, tf.reduce_sum(frequencies, axis=0))
+        hist_probs = tf.divide(frequencies, tf.reduce_sum(frequencies, axis=0)) + epsilon
+
+        # DON'T NEED TO CALCULATE EVERY TIME!---------------------
 
         # Get the corresponding bins of the features
         bin_indices = tf.cast(
@@ -171,11 +184,16 @@ class HistogramWrapper(BaseWrapper):
         indices = tf.stack([bin_indices, second_element], axis=2)
 
         probabilities = tf.gather_nd(hist_probs, indices)
+
         logits = tf.reduce_sum(tf.math.log(probabilities), axis=1)
-        logits = logits - tf.math.reduce_mean(
-            logits
-        )  # log probabilities are the wrong sign if we don't subtract the mean
-        return tf.math.softmax(logits)
+
+        # logits = logits - tf.math.reduce_mean(
+        #     logits
+        # )  # log probabilities are the wrong sign if we don't subtract the mean
+
+        #return tf.math.softmax(logits)
+        
+        return tf.math.exp(logits)
 
     # Defining a Tensor Queue that saves the last ``queue_size`` values
     def build_queue(self, features):
