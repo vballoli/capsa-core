@@ -223,7 +223,7 @@ class HistogramVAEWrapper(BaseWrapper):
         x, y = data
 
         with tf.GradientTape() as t:
-            metric_loss, y_hat,bias = self.loss_fn(x, y)
+            metric_loss, y_hat = self.loss_fn(x, y)
             compiled_loss = self.compiled_loss(
                 y, y_hat, regularization_losses=self.losses
             )
