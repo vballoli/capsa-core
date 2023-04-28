@@ -187,66 +187,8 @@ class HistogramVAEWrapper(BaseWrapper):
         sampled_latent = self.sampling(mu, log_std)
         rec = self.decoder(sampled_latent)
         loss = kl(mu, log_std) + mse(x, rec)
-        return loss, y_hat, bias
+        return loss, y_hat
     
-
-    #@tf.function
-    def train_step(self, data, prefix=None):
-        """
-        The logic for one training step.
-
-        Adds the compiled loss such that the models that subclass this class don't need to explicitly add it.
-        Thus the ``metric_loss`` returned from such a model is not expected to reflect the compiled
-        (user specified) loss -- because it is added here.
-
-        Note: This method could be overwritten in subclasses, but the rule of thumb is to try to avoid
-        overwriting it unless it's absolutely necessary, as e.g. in the ``EnsembleWrapper`` (functionality
-        of that wrapper cannot be achieved without overwriting ``BaseWrapper``'s ``train_step``). But in general,
-        try to only overwrite ``BaseWrapper``'s ``loss_fn`` and ``call`` methods -- in most of the cases it
-        should be enough.
-
-        Parameters
-        ----------
-        data : tuple
-            (x, y) pairs, as in the regular Keras ``train_step``.
-        prefix : str, default None
-            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
-            such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
-            Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call "metric wrappers".
-
-        Returns
-        -------
-        keras_metrics : dict
-            `Keras metrics <https://keras.io/api/metrics/>`_.
-        """
-        x, y = data
-
-        with tf.GradientTape() as t:
-            metric_loss, y_hat,bias = self.loss_fn(x, y)
-            compiled_loss = self.compiled_loss(
-                y, y_hat, regularization_losses=self.losses
-            )
-            loss = metric_loss + compiled_loss
-
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
-
-        self.compiled_metrics.update_state(y, y_hat)
-        prefix = self.metric_name if prefix == None else prefix
-        keras_metrics = {
-            f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
-        }
-        keras_metrics[f"{prefix}_wrapper_loss"] = loss
-
-
-        #Possible area to add DB-VAE additions: the variable ``bias`` is available in this scope
-
-
-        return keras_metrics
-
-
         
     @staticmethod
     def sampling(z_mean, z_log_var):
