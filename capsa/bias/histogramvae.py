@@ -187,7 +187,7 @@ class HistogramVAEWrapper(BaseWrapper):
         sampled_latent = self.sampling(mu, log_std)
         rec = self.decoder(sampled_latent)
         loss = kl(mu, log_std) + mse(x, rec)
-        return loss, y_hat, bias
+        return loss, y_hat
     
 
     #@tf.function
