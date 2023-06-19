@@ -14,10 +14,10 @@
 
 <h4><p align='center'>
 <a href="https://themisai.io/capsa/getting_started/basic_usage.html">[🚀 Getting Started]</a>
-- <a href="https://themisai.io/capsa/">[📄 Docs]</a>
+- <a href="http://capsa.readthedocs.io/">[📄 Docs]</a>
 - <a href="https://www.themisai.io">[🌐 Website]</a>
-- <a href="https://themisai.io/company.html">[🧠 We're Hiring!]</a>
-- <a href="https://themisai.io/capsa/tutorials/index.html">[💡 Tutorials!]</a>
+- <a href="https://www.themisai.io/about">[🧠 We're Hiring!]</a>
+- <a href="https://capsa.readthedocs.io/en/latest/tutorials/index.html">[💡 Tutorials!]</a>
 </p></h4>
 
 <p align="center">
