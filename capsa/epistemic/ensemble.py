@@ -1,11 +1,14 @@
-import tensorflow as tf
-from tensorflow.keras import optimizers as optim
+import keras_core as keras
+from keras_core import optimizers as optim
 
-from ..base_wrapper import BaseWrapper
-from ..risk_tensor import RiskTensor
+#import tensorflow as tf
 
 
-class EnsembleWrapper(BaseWrapper):
+#from ..base_wrapper import BaseWrapper
+#from ..risk_tensor import RiskTensor
+
+
+class EnsembleWrapper(keras.Model):
     """Uses an ensemble of N models (each one is randomly initialized) to accurately
     estimate epistemic uncertainty Lakshminarayanan et al. (2017).
 
@@ -53,8 +56,9 @@ class EnsembleWrapper(BaseWrapper):
             An empty dict, will be used to map ``metric_name``s (string identifiers) of the wrappers that
             a user wants to ensemble to their respective compiled models.
         """
-        super(EnsembleWrapper, self).__init__(base_model)
+        super().__init__()
 
+        self.base_model = base_model
         self.metric_name = "ensemble"
         self.metric_wrapper = metric_wrapper
         self.num_members = num_members
@@ -63,7 +67,7 @@ class EnsembleWrapper(BaseWrapper):
 
     def compile(self, optimizer, loss, metrics=None):
         """
-        Compiles every member in the deep ensemble. Overrides ``tf.keras.Model.compile()``.
+        Compiles every member in the deep ensemble. Overrides ``keras.Model.compile()``.
 
         If user passes only 1 ``optimizer`` and ``loss_fn`` yet they specified e.g. ``num_members``=3,
         duplicate that one ``optimizer`` and ``loss_fn`` for all members in the ensemble.
@@ -84,7 +88,7 @@ class EnsembleWrapper(BaseWrapper):
         # duplicate that one optimizer and loss_fn for all members in the ensemble
         if len(optimizer) < self.num_members:
             optim_conf = optim.serialize(optimizer[0])
-            optimizer = [optim.deserialize(optim_conf) for _ in range(self.num_members)]
+            optimizer = [optim.deserialize({"class_name":optim_conf}) for _ in range(self.num_members)]
         # losses and *most* keras metrics are stateless, no need to serialize as above
         if len(loss) < self.num_members:
             loss = [loss[0] for _ in range(self.num_members)]
@@ -96,10 +100,10 @@ class EnsembleWrapper(BaseWrapper):
 
         for i in range(self.num_members):
 
-            if isinstance(self.base_model, tf.keras.Sequential):
-                m = tf.keras.Sequential.from_config(base_model_config)
-            elif isinstance(self.base_model, tf.keras.Model):
-                m = tf.keras.Model.from_config(base_model_config)
+            if isinstance(self.base_model, keras.Sequential):
+                m = keras.Sequential.from_config(base_model_config)
+            elif isinstance(self.base_model, keras.Model):
+                m = keras.Model.from_config(base_model_config)
             else:
                 raise Exception(
                     "Please provide a Sequential, Functional or subclassed model."
@@ -115,10 +119,9 @@ class EnsembleWrapper(BaseWrapper):
                 if self.metric_wrapper == None
                 else f"{m.metric_name}_{i}"
             )
-            m.compile(optimizer[i], loss[i], metrics[i])
+            m.compile(loss=loss[i],optimizer=optimizer[i] ,metrics=metrics[i])
             self.metrics_compiled[m_name] = m
     
-    @tf.function
     def train_step(self, data):
         """
         The logic for one training step.
@@ -141,7 +144,7 @@ class EnsembleWrapper(BaseWrapper):
             if self.metric_wrapper == None:
                 _ = wrapper.train_step(data)
                 for m in wrapper.metrics:
-                    keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
+                    keras_metrics[f"{name}_{m.name}"] = m.result()
 
             # ensembling one of our metric wrappers
             else:
@@ -161,6 +164,9 @@ class EnsembleWrapper(BaseWrapper):
         #     keras_metrics["wrapper_loss"] = tf.reduce_mean(
         #         [v for k, v in keras_metrics.items() if "wrapper_loss" in k]
         #     )
+
+        #for each element in keras_metrics, print the element in one line
+        
 
         return keras_metrics
 
@@ -186,7 +192,7 @@ class EnsembleWrapper(BaseWrapper):
             if self.metric_wrapper == None:
                 _ = wrapper.test_step(data)
                 for m in wrapper.metrics:
-                    keras_metrics[f"{name}_compiled_{m.name}"] = m.result()
+                    keras_metrics[f"{name}_{m.name}"] = m.result()
 
             # ensembling one of our metric wrappers
             else:
@@ -203,6 +209,8 @@ class EnsembleWrapper(BaseWrapper):
         #     )
 
         return keras_metrics
+    
+
 
     def call(self, x, training=False, return_risk=True):
         """
@@ -238,11 +246,11 @@ class EnsembleWrapper(BaseWrapper):
         if not return_risk:
             return out
         else:
-            outs = tf.stack(outs)
+            outs = keras.ops.stack(outs)
             # ensembling the user model
             if self.metric_wrapper == None:
-                mean, std = tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)
-                return RiskTensor(mean, epistemic=std)
+                mean, std = keras.ops.mean(outs, 0), keras.ops.std(outs, 0)
+                return mean, std
             # ensembling one of our own metrics
             else:
-                return tf.reduce_mean(outs, 0)
+                return keras.ops.mean(outs, 0)

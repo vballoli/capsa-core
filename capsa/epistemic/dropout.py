@@ -1,5 +1,11 @@
-import tensorflow as tf
-from tensorflow.keras.layers import (
+
+
+
+
+#import tensorflow as tf
+import keras_core as keras
+
+from keras_core.layers import (
     Dense,
     Conv1D,
     Conv2D,
@@ -10,11 +16,11 @@ from tensorflow.keras.layers import (
     SpatialDropout3D,
 )
 
-from ..base_wrapper import BaseWrapper
-from ..risk_tensor import RiskTensor
+#from ..base_wrapper import BaseWrapper
+#from ..risk_tensor import RiskTensor
 
 
-class DropoutWrapper(BaseWrapper):
+class DropoutWrapper(keras.Model):
     """Adds dropout layers (Srivastava et al., 2014) to capture epistemic
     uncertainty Gal & Ghahramani (2016).
 
@@ -51,7 +57,7 @@ class DropoutWrapper(BaseWrapper):
         model : tf.keras.Model
             ``base_model`` with added dropout layers.
         """
-        super(DropoutWrapper, self).__init__(base_model)
+        super().__init__()
 
         self.metric_name = "dropout"
 
@@ -60,6 +66,10 @@ class DropoutWrapper(BaseWrapper):
             self.model = base_model
         else:
             self.model = add_dropout(base_model, p)
+
+
+    
+
 
     def loss_fn(self, x, y):
         """
@@ -105,18 +115,24 @@ class DropoutWrapper(BaseWrapper):
             Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
             uncertainty estimate (tf.Tensor).
         """
+
+        if training:
+            y_hat = self.model(x, training=True)
+            return y_hat
+
+
         if not return_risk:
-            y_hat = self.model(x, training)
-            return RiskTensor(y_hat)
+            y_hat = self.model(x, training=training)
+            return y_hat
         else:
             # user model
             outs = []
             for _ in range(T):
                 # we need training=True so that dropout is applied
-                outs.append(self.model(x, True))
-            outs = tf.stack(outs)  # (T, N, 1)
-            mean, std = tf.reduce_mean(outs, 0), tf.math.reduce_std(outs, 0)  # (N, 1)x2
-            return RiskTensor(mean, epistemic=std)
+                outs.append(self.model(x, training=True))
+            outs = keras.ops.stack(outs)  # (T, N, 1)
+            mean, std = keras.ops.mean(outs, 0), keras.ops.std(outs, 0)  # (N, 1)x2
+            return mean, std
 
 
 def add_dropout(model, p):
@@ -145,7 +161,7 @@ def add_dropout(model, p):
             elif type(cur_layer) == Conv3D and type(next_layer) != SpatialDropout3D:
                 x = SpatialDropout1D(rate=p)(x)
 
-    new_model = tf.keras.Model(inputs, x)
+    new_model = keras.Model(inputs, x)
     return new_model
 
 

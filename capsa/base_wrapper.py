@@ -1,9 +1,10 @@
-import tensorflow as tf
+#import tensorflow as tf
+import keras_core as keras
 
 from .utils import _get_out_dim, copy_layer
 
 
-class BaseWrapper(tf.keras.Model):
+class BaseWrapper(keras.Model):
     """Base class for a metric wrapper, all of our individual metric wrappers
     (``MVEWrapper``, ``HistogramWrapper``, ``DropoutWrapper``, etc.) subclass it.
 
@@ -48,109 +49,109 @@ class BaseWrapper(tf.keras.Model):
         """
         super(BaseWrapper, self).__init__()
 
-        if base_model is not None:
-            self.base_model = base_model
-            self.feature_extractor = tf.keras.Model(
-                base_model.inputs, base_model.layers[-2].output
-            )
+        # if base_model is not None:
+        #     self.base_model = base_model
+        #     self.feature_extractor = keras.Model(
+        #         base_model.inputs, base_model.layers[-2].output
+        #     )
 
-            last_layer = base_model.layers[-1]
-            self.out_layer = copy_layer(last_layer)
-            self.out_dim = _get_out_dim(base_model)
+        #     last_layer = base_model.layers[-1]
+        #     self.out_layer = copy_layer(last_layer)
+        #     self.out_dim = _get_out_dim(base_model)
     
-    @tf.function
-    def train_step(self, data, prefix=None):
-        """
-        The logic for one training step.
 
-        Adds the compiled loss such that the models that subclass this class don't need to explicitly add it.
-        Thus the ``metric_loss`` returned from such a model is not expected to reflect the compiled
-        (user specified) loss -- because it is added here.
+    # def train_step(self, data, prefix=None):
+    #     """
+    #     The logic for one training step.
 
-        Note: This method could be overwritten in subclasses, but the rule of thumb is to try to avoid
-        overwriting it unless it's absolutely necessary, as e.g. in the ``EnsembleWrapper`` (functionality
-        of that wrapper cannot be achieved without overwriting ``BaseWrapper``'s ``train_step``). But in general,
-        try to only overwrite ``BaseWrapper``'s ``loss_fn`` and ``call`` methods -- in most of the cases it
-        should be enough.
+    #     Adds the compiled loss such that the models that subclass this class don't need to explicitly add it.
+    #     Thus the ``metric_loss`` returned from such a model is not expected to reflect the compiled
+    #     (user specified) loss -- because it is added here.
 
-        Parameters
-        ----------
-        data : tuple
-            (x, y) pairs, as in the regular Keras ``train_step``.
-        prefix : str, default None
-            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
-            such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
-            Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call "metric wrappers".
+    #     Note: This method could be overwritten in subclasses, but the rule of thumb is to try to avoid
+    #     overwriting it unless it's absolutely necessary, as e.g. in the ``EnsembleWrapper`` (functionality
+    #     of that wrapper cannot be achieved without overwriting ``BaseWrapper``'s ``train_step``). But in general,
+    #     try to only overwrite ``BaseWrapper``'s ``loss_fn`` and ``call`` methods -- in most of the cases it
+    #     should be enough.
 
-        Returns
-        -------
-        keras_metrics : dict
-            `Keras metrics <https://keras.io/api/metrics/>`_.
-        """
-        x, y = data
+    #     Parameters
+    #     ----------
+    #     data : tuple
+    #         (x, y) pairs, as in the regular Keras ``train_step``.
+    #     prefix : str, default None
+    #         Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
+    #         such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
+    #         Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
+    #         not to be confused with what we call "metric wrappers".
 
-        with tf.GradientTape() as t:
-            metric_loss, y_hat = self.loss_fn(x, y)
-            compiled_loss = self.compiled_loss(
-                y, y_hat, regularization_losses=self.losses
-            )
-            loss = metric_loss + compiled_loss
+    #     Returns
+    #     -------
+    #     keras_metrics : dict
+    #         `Keras metrics <https://keras.io/api/metrics/>`_.
+    #     """
+    #     x, y = data
 
-        trainable_vars = self.trainable_variables
-        gradients = t.gradient(loss, trainable_vars)
-        self.optimizer.apply_gradients(zip(gradients, trainable_vars))
+    #     with tf.GradientTape() as t:
+    #         metric_loss, y_hat = self.loss_fn(x, y)
+    #         compiled_loss = self.compiled_loss(
+    #             y, y_hat, regularization_losses=self.losses
+    #         )
+    #         loss = metric_loss + compiled_loss
 
-        self.compiled_metrics.update_state(y, y_hat)
-        prefix = self.metric_name if prefix == None else prefix
-        keras_metrics = {
-            f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
-        }
-        keras_metrics[f"{prefix}_wrapper_loss"] = loss
+    #     trainable_vars = self.trainable_variables
+    #     gradients = t.gradient(loss, trainable_vars)
+    #     self.optimizer.apply_gradients(zip(gradients, trainable_vars))
 
-        return keras_metrics
+    #     self.compiled_metrics.update_state(y, y_hat)
+    #     prefix = self.metric_name if prefix == None else prefix
+    #     keras_metrics = {
+    #         f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
+    #     }
+    #     keras_metrics[f"{prefix}_wrapper_loss"] = loss
+
+    #     return keras_metrics
     
-    @tf.function
-    def test_step(self, data, prefix=None):
-        """
-        The logic for one evaluation step.
+    # @tf.function
+    # def test_step(self, data, prefix=None):
+    #     """
+    #     The logic for one evaluation step.
 
-        Note: This method could be overwritten in subclasses, but the rule of thumb is to try to avoid
-        overwriting it unless it's absolutely necessary, as e.g. in the ``EnsembleWrapper`` (functionality
-        of that wrapper cannot be achieved without overwriting ``BaseWrapper``'s ``test_step``). But in general,
-        try to only overwrite ``BaseWrapper``'s ``loss_fn`` and ``call`` methods -- in most of the cases it
-        should be enough.
+    #     Note: This method could be overwritten in subclasses, but the rule of thumb is to try to avoid
+    #     overwriting it unless it's absolutely necessary, as e.g. in the ``EnsembleWrapper`` (functionality
+    #     of that wrapper cannot be achieved without overwriting ``BaseWrapper``'s ``test_step``). But in general,
+    #     try to only overwrite ``BaseWrapper``'s ``loss_fn`` and ``call`` methods -- in most of the cases it
+    #     should be enough.
 
-        Parameters
-        ----------
-        data : tuple
-            (x, y) pairs, as in the regular Keras ``test_step``.
-        prefix : str, default None
-            Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
-            such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
-            Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
-            not to be confused with what we call "metric wrappers".
+    #     Parameters
+    #     ----------
+    #     data : tuple
+    #         (x, y) pairs, as in the regular Keras ``test_step``.
+    #     prefix : str, default None
+    #         Used to modify entries in the dict of `keras metrics <https://keras.io/api/metrics/>`_
+    #         such that they reflect the name of the metric wrapper that produced them (e.g., mve_loss: 2.6763).
+    #         Note, keras metrics dict contains e.g. loss values for the current epoch/iteration
+    #         not to be confused with what we call "metric wrappers".
 
-        Returns
-        -------
-        keras_metrics : dict
-            `Keras metrics <https://keras.io/api/metrics/>`_`.
-        """
-        x, y = data
+    #     Returns
+    #     -------
+    #     keras_metrics : dict
+    #         `Keras metrics <https://keras.io/api/metrics/>`_`.
+    #     """
+    #     x, y = data
 
-        metric_loss, y_hat = self.loss_fn(x, y)
-        compiled_loss = self.compiled_loss(y, y_hat, regularization_losses=self.losses)
-        loss = metric_loss + compiled_loss
+    #     metric_loss, y_hat = self.loss_fn(x, y)
+    #     compiled_loss = self.compiled_loss(y, y_hat, regularization_losses=self.losses)
+    #     loss = metric_loss + compiled_loss
 
-        self.compiled_metrics.update_state(y, y_hat)
-        prefix = self.metric_name if prefix == None else prefix
-        # prefix 'val' is added by tf.keras automatically, so no need to add it here
-        keras_metrics = {
-            f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
-        }
-        keras_metrics[f"{prefix}_wrapper_loss"] = loss
+    #     self.compiled_metrics.update_state(y, y_hat)
+    #     prefix = self.metric_name if prefix == None else prefix
+    #     # prefix 'val' is added by tf.keras automatically, so no need to add it here
+    #     keras_metrics = {
+    #         f"{prefix}_compiled_{m.name}": m.result() for m in self.metrics
+    #     }
+    #     keras_metrics[f"{prefix}_wrapper_loss"] = loss
 
-        return keras_metrics
+    #     return keras_metrics
 
     def loss_fn(self, x, y):
         """
