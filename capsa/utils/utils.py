@@ -1,21 +1,23 @@
 import tensorflow as tf
-import tensorflow_probability as tfp
-from tensorflow.keras import layers
+#import tensorflow_probability as tfp
+
+import keras_core as keras
+#from keras import layers
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
 def get_user_model():
-    return tf.keras.Sequential(
+    return keras.Sequential(
         [
-            tf.keras.Input(shape=(1,)),
-            layers.Dense(16, "relu"),
-            layers.Dense(32, "relu"),
-            layers.Dense(64, "relu"),
-            layers.Dense(32, "relu"),
-            layers.Dense(16, "relu"),
-            layers.Dense(1, None),
+            keras.Input(shape=(1,)),
+            keras.layers.Dense(16, "relu"),
+            keras.layers.Dense(32, "relu"),
+            keras.layers.Dense(64, "relu"),
+            keras.layers.Dense(32, "relu"),
+            keras.layers.Dense(16, "relu"),
+            keras.layers.Dense(1, None),
         ]
     )
 
@@ -24,12 +26,12 @@ def get_decoder():
     return tf.keras.Sequential(
         [
             tf.keras.Input(shape=(32,)),
-            layers.Dense(16, "relu"),
-            layers.Dense(32, "relu"),
-            layers.Dense(64, "relu"),
-            layers.Dense(32, "relu"),
-            layers.Dense(16, "relu"),
-            layers.Dense(1, None),
+            keras.layers.Dense(16, "relu"),
+            keras.layers.Dense(32, "relu"),
+            keras.layers.Dense(64, "relu"),
+            keras.layers.Dense(32, "relu"),
+            keras.layers.Dense(16, "relu"),
+            keras.layers.Dense(1, None),
         ]
     )
 
@@ -96,7 +98,7 @@ def plot_risk_2d(x_val, y_val, risk_tens, label):
 
 
 def _get_out_dim(model):
-    return model.layers[-1].output_shape[1:]
+    return model.layers[-1].output.shape[1:]
 
 
 def copy_layer(layer, override_activation=None):

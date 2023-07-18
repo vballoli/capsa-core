@@ -1,10 +1,10 @@
 numpy
 matplotlib
-tensorflow
-tensorflow-probability
-sphinx
-sphinx_rtd_theme
-sphinx-tabs
-furo
-pandoc
-nbsphinx
+# tensorflow
+# tensorflow-probability
+# sphinx
+# sphinx_rtd_theme
+# sphinx-tabs
+# furo
+# pandoc
+# nbsphinx
