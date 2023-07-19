@@ -1,4 +1,4 @@
-import tensorflow as tf
+import keras_core as keras
 
 from ..base_wrapper import BaseWrapper
 from ..risk_tensor import RiskTensor
@@ -6,19 +6,19 @@ from ..utils import copy_layer
 
 
 def neg_log_likelihood(y, mu, logvar):
-    variance = tf.exp(logvar)
+    variance = keras.ops.exp(logvar)
     loss = logvar + (y - mu) ** 2 / variance
-    return tf.reduce_mean(loss)
+    return keras.ops.mean(loss)
 
 
 def sampling(z_mean, z_log_var):
-    batch = tf.shape(z_mean)[0]
-    dim = tf.shape(z_mean)[1]
-    epsilon = tf.keras.backend.random_normal(shape=(batch, dim))
-    return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+    batch = keras.ops.shape(z_mean)[0]
+    dim = keras.ops.shape(z_mean)[1]
+    epsilon = keras.normal(shape=(batch, dim))
+    return z_mean + keras.ops.exp(0.5 * z_log_var) * epsilon
 
 
-class MVEWrapper(BaseWrapper):
+class MVEWrapper(keras.Model):
     """Mean and Variance Estimation (Nix & Weigend, 1994). This metric
     wrapper models aleatoric uncertainty.
 
@@ -62,8 +62,13 @@ class MVEWrapper(BaseWrapper):
         is_classification : bool
             Indicates whether model is a classification model.
         """
-        super(MVEWrapper, self).__init__(base_model)
+        super(MVEWrapper, self).__init__()
 
+        self.base_model = base_model
+        self.feature_extractor = keras.Model(
+            base_model.inputs, base_model.layers[-2].output
+        )
+        self.out_layer = base_model.layers[-1]
         self.metric_name = "mve"
         self.out_mu = copy_layer(self.out_layer, override_activation="linear")
         self.out_logvar = copy_layer(self.out_layer, override_activation="linear")
@@ -95,12 +100,12 @@ class MVEWrapper(BaseWrapper):
             loss = neg_log_likelihood(y, mu, logvar)
         else:
             sampled_z = sampling(mu, logvar)
-            sampled_y_hat = tf.nn.softmax(sampled_z)
-            loss = tf.keras.losses.CategoricalCrossentropy()(y, sampled_y_hat)
+            sampled_y_hat = keras.ops.softmax(sampled_z)
+            loss = keras.ops.categorical_crossentropy(y, sampled_y_hat)
 
         return loss, y_hat
 
-    def call(self, x, training=False, return_risk=True):
+    def call(self, x, training=False, return_risk=False):
         """
         Forward pass of the model.
 
@@ -119,12 +124,12 @@ class MVEWrapper(BaseWrapper):
             Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the aleatoric
             uncertainty estimate (tf.Tensor).
         """
-        features = self.feature_extractor(x, training)
+        features = self.feature_extractor(x, training=training)
         y_hat = self.out_layer(features)
 
         if not return_risk:
-            return RiskTensor(y_hat)
+            return y_hat
         else:
             logvar = self.out_logvar(features)
-            var = tf.exp(logvar)
-            return RiskTensor(y_hat, aleatoric=var)
+            var = keras.ops.exp(logvar)
+            return y_hat, var

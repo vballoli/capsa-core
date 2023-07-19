@@ -1,5 +1,5 @@
 import tensorflow as tf
-#import tensorflow_probability as tfp
+import tensorflow_probability as tfp
 
 import keras_core as keras
 #from keras import layers
