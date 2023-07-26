@@ -6,6 +6,10 @@ import keras_core as keras
 
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.special import ndtri
+
+def quantile_from_normal_distribution(mu: float, std: float, value: float) -> keras.KerasTensor:
+    return keras.ops.convert_to_tensor(mu + std * ndtri(value))
 
 
 def get_user_model():
@@ -144,7 +148,7 @@ def gen_calibration_plot(model, ds, path=None):
         # in other words, if have a normal distrib. with mean 0 and std 1,
         # 50% of data falls below and 50% falls above 0.0.
         # (3029, 128, 160, 1)
-        ppf_for_this_percentile = tfp.distributions.Normal(mu, std).quantile(percentile)
+        ppf_for_this_percentile = quantile_from_normal_distribution(mu, std, percentile)
         vals.append(
             (y_test <= ppf_for_this_percentile.numpy()).mean()
         )  # (3029, 128, 160, 1) -> scalar
