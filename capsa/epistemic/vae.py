@@ -1,7 +1,8 @@
 from random import sample
 
-import tensorflow as tf
-from tensorflow.keras import layers
+# import tensorflow as tf
+import keras_core as keras
+from keras_core import layers
 
 from ..utils import copy_layer, _get_out_dim
 from ..base_wrapper import BaseWrapper
@@ -9,23 +10,23 @@ from ..risk_tensor import RiskTensor
 
 
 def kl(mu, log_std):
-    return -0.5 * tf.reduce_mean(
-        1 + log_std - tf.math.square(mu) - tf.math.square(tf.math.exp(log_std)),
+    return -0.5 * keras.ops.mean(
+        1 + log_std - keras.ops.square(mu) - keras.ops.square(keras.ops.exp(log_std)),
         axis=-1,
     )
 
 
 def mse(y, y_hat, reduce=True):
     ax = list(range(1, len(y.shape)))
-    mse = tf.reduce_sum(
+    mse = keras.ops.sum(
         (y - y_hat) ** 2,
         axis=ax,
         keepdims=(False if reduce else True),
     )
-    return tf.reduce_mean(mse) if reduce else mse
+    return keras.ops.sum(mse) if reduce else mse
 
 
-class VAEWrapper(BaseWrapper):
+class VAEWrapper(keras.Model):
     """Uses Variational autoencoders (VAEs) (Kingma & Welling, 2013) to estimate
     epistemic uncertainty.
 
@@ -80,12 +81,18 @@ class VAEWrapper(BaseWrapper):
         feature_extractor : tf.keras.Model
             Creates a ``feature_extractor`` by removing last layer from the ``base_model``.
         """
-        super(VAEWrapper, self).__init__(base_model)
+        super(VAEWrapper, self).__init__()
+        self.base_model = base_model
+        self.feature_extractor = keras.Model(
+            base_model.inputs, base_model.layers[-2].output
+        )
+        self.out_layer = base_model.layers[-1]
+        self.out_dim = _get_out_dim(base_model)
 
         self.metric_name = "vae"
         latent_dim = self.out_dim[-1]
-        self.mean_layer = tf.keras.layers.Dense(latent_dim)
-        self.log_std_layer = tf.keras.layers.Dense(latent_dim)
+        self.mean_layer = keras.layers.Dense(latent_dim)
+        self.log_std_layer = keras.layers.Dense(latent_dim)
 
         if decoder != None:
             self.decoder = decoder
@@ -118,8 +125,8 @@ class VAEWrapper(BaseWrapper):
             Vector sampled from the latent space according to the predicted parameters
             of the normal distribution.
         """
-        epsilon = tf.keras.backend.random_normal(shape=tf.shape(z_mean))
-        return z_mean + tf.exp(0.5 * z_log_var) * epsilon
+        epsilon = keras.random_normal(shape=keras.ops.shape(z_mean))
+        return z_mean + keras.ops.exp(0.5 * z_log_var) * epsilon
 
     def loss_fn(self, x, _):
         """
@@ -150,7 +157,7 @@ class VAEWrapper(BaseWrapper):
         loss = kl(mu, log_std) + mse(x, rec)
         return loss, y_hat
 
-    def call(self, x, training=False, return_risk=True, T=1):
+    def call(self, x, training=False, return_risk=False, T=1):
         """
         Forward pass of the model. The epistemic risk estimate could be calculated differently:
         by running either (1) deterministic or (2) stochastic forward pass.
@@ -173,21 +180,21 @@ class VAEWrapper(BaseWrapper):
             Risk aware tensor, contains both the predicted label y_hat (tf.Tensor) and the epistemic
             uncertainty estimate (tf.Tensor).
         """
-        features = self.feature_extractor(x, training)
+        features = self.feature_extractor(x, training=training)
         y_hat = self.out_layer(features)
 
         if not return_risk:
-            return RiskTensor(y_hat)
+            return y_hat
         else:
             mu = self.mean_layer(features)
             log_std = self.log_std_layer(features)
 
             # deterministic
             if T == 1:
-                rec = self.decoder(mu, training)
+                rec = self.decoder(mu, training=training)
                 epistemic = mse(x, rec, reduce=False)
-                epistemic = tf.repeat(input=epistemic,repeats=y_hat.shape[-1],axis=-1)
-                return RiskTensor(y_hat, epistemic=epistemic)
+                epistemic = keras.ops.repeat(x=epistemic,repeats=y_hat.shape[-1],axis=-1)
+                return y_hat, epistemic
 
             # stochastic
             else:
@@ -195,9 +202,9 @@ class VAEWrapper(BaseWrapper):
                 for _ in T:
                     sampled_latent = self.sampling(mu, log_std)
                     recs.append(self.decoder(sampled_latent))
-                std = tf.reduce_std(recs)
-                std = tf.repeat(input=std,repeats=y_hat.shape[-1],axis=-1)
-                return RiskTensor(y_hat, epistemic=std)
+                std = keras.ops.std(recs)
+                std = keras.ops.repeat(x=std,repeats=y_hat.shape[-1],axis=-1)
+                return y_hat, std
 
     def input_to_histogram(self, x, training=False, features=None):
         # needed to interface with the Histogram metric
@@ -207,19 +214,20 @@ class VAEWrapper(BaseWrapper):
 
 
 def reverse_model(model, latent_dim):
-    inputs = tf.keras.Input(shape=latent_dim)
+    inputs = keras.Input(shape=(latent_dim, ))
     i = len(model.layers) - 1
     while type(model.layers[i]) != layers.InputLayer and i >= 0:
         if i == len(model.layers) - 1:
             x = reverse_layer(model.layers[i])(inputs)
         else:
             if type(model.layers[i - 1]) == layers.InputLayer:
-                original_input = model.layers[i - 1].input_shape
-                x = reverse_layer(model.layers[i], original_input)(x)
+                # breakpoint()
+                # original_input = model.layers[i - 1].shape
+                x = reverse_layer(model.layers[i], (latent_dim, ))(x)
             else:
                 x = reverse_layer(model.layers[i])(x)
         i -= 1
-    return tf.keras.Model(inputs, x)
+    return keras.Model(inputs, x)
 
 
 def reverse_layer(layer, output_shape=None):
@@ -245,7 +253,7 @@ def reverse_layer(layer, output_shape=None):
     conv = [layers.Conv1D, layers.Conv2D, layers.Conv3D]
 
     if layer_type == layers.Dense:
-        config["units"] = layer.input_shape[-1]
+        config["units"] = layer.input.shape[-1]
         return layers.Dense.from_config(config)
     elif layer_type in unchanged_layers:
         return type(layer).from_config(config)

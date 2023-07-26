@@ -78,18 +78,10 @@ def plot_epistemic_2d(x, y, x_val, y_val, y_pred, risk, k=3):
     plt.show()
 
 
-def plot_risk_2d(x_val, y_val, risk_tens, label):
-    if risk_tens.aleatoric != None and risk_tens.epistemic != None:
-        Exception(
-            "RiskTensor has both aleatoric and epistemic uncertainties, please specify which one you would like to plot."
-        )
-    elif risk_tens.aleatoric != None:
-        risk = risk_tens.aleatoric
-    elif risk_tens.epistemic != None:
-        risk = risk_tens.epistemic
+def plot_risk_2d(x_val, y_val, pred, risk, label):
     fig, axs = plt.subplots(2)
     axs[0].scatter(x_val, y_val, s=0.5, label="gt")
-    axs[0].scatter(x_val, risk_tens.y_hat, s=0.5, label="yhat")
+    axs[0].scatter(x_val, pred, s=0.5, label="yhat")
     plt_vspan()
     axs[1].scatter(x_val, risk, s=0.5, label=label)
     plt_vspan()

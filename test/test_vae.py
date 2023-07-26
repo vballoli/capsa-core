@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow as tf
+# import tensorflow as tf
+import keras_core as keras
 
 from capsa import VAEWrapper
 from capsa.utils import (
@@ -23,19 +24,19 @@ def test_vae():
 
     model = VAEWrapper(user_model)
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=2e-3),
-        loss=tf.keras.losses.MeanSquaredError(),
+        optimizer=keras.optimizers.Adam(learning_rate=2e-3),
+        loss=keras.losses.MeanSquaredError(),
         # optionally, metrics could also be specified
-        metrics=tf.keras.metrics.CosineSimilarity(name="cos"),
+        metrics=[keras.metrics.CosineSimilarity(name="cos")],
     )
 
     history = model.fit(ds_train, epochs=30, validation_data=(x_val, y_val))
     plot_loss(history)
 
-    risk_tensor = model(x_val)
+    pred, epistemic = model(x_val, return_risk=True)
 
     preds_names = get_preds_names(history)
-    plot_risk_2d(x_val, y_val, risk_tensor, preds_names[0])
+    plot_risk_2d(x_val, y_val, pred, epistemic, preds_names[0])
     # plot_epistemic_2d(x, y, x_val, y_val, risk_tensor)
 
 
